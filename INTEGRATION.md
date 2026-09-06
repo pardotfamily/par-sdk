@@ -202,6 +202,68 @@ RouteEndMismatch(address expected, address actual)
 
 Approvals: token -> router for sells. ERC20 quote -> router for buyWithQuote / swapExactIn with ERC20 in. None for ETH in.
 
+## 7c. SDK (TypeScript, viem)
+
+Does sections 2 to 7b and 8. Node 18+ and browsers. Nothing is signed inside; build* return { to, data, value } for any wallet lib.
+
+```sh
+npm i viem github:pardotfamily/par-sdk
+```
+
+```ts
+import { createPar, buildApprove, ADDRESSES, FACTORY_DEPLOY_BLOCK } from "par-sdk";
+
+const par = createPar({ rpcUrl: RPC_URL });   // omit rpcUrl for the public node
+
+// discover
+const launches = await par.getLaunches(fromBlock, toBlock);   // both factories, max 10000 blocks per call on public RPC
+// [{ token, kind: "single" | "multi", deployer, pairTokens, poolIds, blockNumber, transactionHash }]
+const stop = par.watchLaunches((l) => { /* new token */ });
+
+// resolve a token
+const t = await par.getTradable(token);   // null if not par
+// t = launch record plus routes[]: { token, kind, router, markets: [{ index, pairToken, poolKey, poolId, tokenIsCurrency0, ... }], routes }
+const launch = await par.getLaunch(token);   // same without routes
+
+// metadata
+const meta = await par.getTokenMetadata(token);   // { name, symbol, logo, logoUrl, description, socials, deployer }
+
+// price
+const prices = await par.getSpotPrices(t);   // bigint[] per market, raw quote units per 1e18 token
+
+// trades read
+const trades = await par.getTrades(launch, fromBlock, toBlock);   // every market
+// [{ poolId, side: "buy" | "sell", tokenAmount, quoteAmount, priceX18, sender, blockNumber, transactionHash, logIndex }]
+const stopTrades = par.watchTrades(launch, (tr) => { /* ... */ });
+
+// quotes (eth_call simulation, no balance or approval needed)
+const tokensOut = await par.quoteBuy(t, ethIn);              // bigint
+const ethOut    = await par.quoteSell(t, tokensIn, owner);   // bigint
+
+// buy with ETH: single or multi, all markets ETH can reach, slippage floor on the total
+const buy = await par.buildBuy(t, ethIn, recipient, slippageBps);   // { to, data, value, expectedOut }
+await walletClient.sendTransaction(buy);
+
+// sell to ETH: approve the launch router once, then build. owner = the wallet that holds and receives.
+const approve = buildApprove(t.token, t.router);   // { to, data, value: 0n }
+const sell = await par.buildSell(t, tokensIn, owner, slippageBps);   // { to, data, value, expectedOut }
+
+// indexer client, same endpoints as section 8, typed
+const ix = par.indexer;
+await ix.launches({ orderBy: "recentVolume", limit: 50 });
+await ix.launch(token);
+await ix.trades(token, { limit: 500, wallet });
+await ix.candles(token, "5m", { limit: 300, before });
+await ix.holders(token, 100);
+await ix.positions(wallet);
+await ix.allLaunches();
+await ix.stats();
+```
+
+Lower level exports: ADDRESSES, robinhoodChain, createParClient, all ABIs (factoryAbi, multiFactoryAbi, routerAbi, multiRouterAbi, lockerAbi, multiLockerAbi, feeEscrowAbi, quotePricerAbi, poolManagerAbi, launcherTokenAbi), poolKeyFor, poolIdOf, tokenIsCurrency0, readSqrtPriceX96, priceX18FromSqrt, getEthRoute, buildBuyWithEth, buildSellToEth, buildSwapInQuote, quoteBuyWithEth, quoteSellToEth, splitAmount, withSlippage, parseLaunchLogs, parseTradeLogs, ParIndexer.
+
+Version 0.2.1. Repo and README: https://github.com/pardotfamily/par-sdk
+
 ## 8. Indexer API
 
 Base https://api.par.family. GET only. CORS open. gzip. Send a User-Agent. Tell us if you need high sustained rates. Trades are queryable about 1 s after the block.
