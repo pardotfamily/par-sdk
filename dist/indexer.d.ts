@@ -55,6 +55,8 @@ export type IndexedLaunch = {
     creatorCollectedQuote: string;
     creatorCollectedToken: string;
     burnedToken: string;
+    /** The creator gave the creator share of fees to the holders (recipient is the holder vault). Permanent. */
+    feesToHolders?: boolean;
     tradeCount: number;
     lastPriceQuoteX18: string | null;
     lastPriceEth: number | null;
@@ -158,6 +160,52 @@ export type LaunchesQuery = {
     /** Only these tokens. */
     tokenIn?: Address[];
 };
+export type Distribution = {
+    id: string;
+    round: number;
+    total: string;
+    recipients: number;
+    txHash: Hex;
+    timestamp: number;
+};
+export type Distributions = {
+    token: Address;
+    vault: Address | null;
+    wallet: Address | null;
+    rounds: number;
+    lastAt: number | null;
+    /** Sum of every round, in token units. */
+    total: string;
+    items: Distribution[];
+};
+export type Reward = {
+    id: string;
+    token: Address;
+    amount: string;
+    txHash: Hex;
+    timestamp: number;
+};
+export type Rewards = {
+    owner: Address;
+    total: string | null;
+    items: Reward[];
+};
+export type Buyback = {
+    id: string;
+    amount: string;
+    txHash: Hex;
+    timestamp: number;
+};
+export type Buybacks = {
+    wallet: Address | null;
+    token: Address | null;
+    /** $par burned, in wei units. */
+    burned: string;
+    /** ETH the buyback wallet paid for it, in wei. */
+    ethSpent: string;
+    count: number;
+    items: Buyback[];
+};
 export declare class ParIndexer {
     private readonly baseUrl;
     private readonly fetchImpl;
@@ -195,6 +243,12 @@ export declare class ParIndexer {
     positions(owner: Address, limit?: number): Promise<Position[]>;
     /** Fee collections the locker made for a token, newest first. */
     fees(token: Address, limit?: number): Promise<FeeCollection[]>;
+    /** Holder-rewards rounds of a "fees to holders" launch, newest first, with totals. */
+    distributions(token: Address, limit?: number): Promise<Distributions>;
+    /** What a wallet received from holder rewards; `token` narrows it (and fills `total`). */
+    rewards(owner: Address, token?: Address, limit?: number): Promise<Rewards>;
+    /** $par bought with protocol fees and burned, newest first, with totals. */
+    buybacks(limit?: number): Promise<Buybacks>;
     /**
      * Live feed of indexer events (server-sent events). Browser and Node 20+
      * expose EventSource; the URL is returned for other runtimes.

@@ -13,6 +13,16 @@ export const ADDRESSES = {
   // Shared.
   feeEscrow: "0x1C27e8F0c2a754DB23ab1608fA09c068D54d4386" as Address,
   quotePricer: "0x9EfC6EFA4c5F31e2BEC6CC174Ba7bB8f0b57d563" as Address,
+  // Fee routing. The splitter is the protocol fee recipient of launches since
+  // it was set (80% of protocol quote fees buy and burn $par); the holder vault
+  // is the creator fee recipient of "fees to holders" launches; Disperse emits
+  // the holder-rewards rounds.
+  feeSplitter: "0x913A93cc2676F49454173323B85762b3e5906c43" as Address,
+  holderVault: "0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C" as Address,
+  disperse: "0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC" as Address,
+  buybackWallet: "0x5bA4a4A197111CE8B6a2C2776D7836A9E1868033" as Address,
+  holdersWallet: "0xB1a7a3A37F41e4dC9507F9B0F946B7F786c4AFb4" as Address,
+  par: "0x507B6F349a80114097A67B8b4677367acC15b220" as Address,
   // Uniswap v4 PoolManager: every par pool lives here and every trade is a Swap event on it.
   poolManager: "0x8366a39CC670B4001A1121B8F6A443A643e40951" as Address,
   weth: "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73" as Address,

@@ -80,6 +80,18 @@ export class ParIndexer {
     fees(token, limit) {
         return this.get("/fees", { token, limit });
     }
+    /** Holder-rewards rounds of a "fees to holders" launch, newest first, with totals. */
+    distributions(token, limit) {
+        return this.get("/distributions", { token, limit });
+    }
+    /** What a wallet received from holder rewards; `token` narrows it (and fills `total`). */
+    rewards(owner, token, limit) {
+        return this.get("/rewards", { owner, token, limit });
+    }
+    /** $par bought with protocol fees and burned, newest first, with totals. */
+    buybacks(limit) {
+        return this.get("/buybacks", { limit });
+    }
     /**
      * Live feed of indexer events (server-sent events). Browser and Node 20+
      * expose EventSource; the URL is returned for other runtimes.

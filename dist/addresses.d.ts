@@ -9,6 +9,12 @@ export declare const ADDRESSES: {
     readonly multiLocker: Address;
     readonly feeEscrow: Address;
     readonly quotePricer: Address;
+    readonly feeSplitter: Address;
+    readonly holderVault: Address;
+    readonly disperse: Address;
+    readonly buybackWallet: Address;
+    readonly holdersWallet: Address;
+    readonly par: Address;
     readonly poolManager: Address;
     readonly weth: Address;
     readonly usdg: Address;

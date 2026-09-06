@@ -104,6 +104,11 @@ Everything the facade uses is exported:
 
 The pool's LP fee is `poolFee` (hundredths of a bip): base 1% plus the creator tax the launch chose (0–10%). Of the base 1%, half accrues to the creator and half to the protocol; the protocol's share paid in the launch token is burned by the locker on every collection. Fees are claimable from `feeEscrow` by the creator; anyone may trigger a collection on the locker.
 
+Two things sit on top of that:
+
+- **Protocol buyback.** For launches created since `addresses.feeSplitter` became the protocol fee recipient, 80% of the protocol's quote fees buy $par and burn it, every hour. `indexer.buybacks()` has the totals and the burns.
+- **Fees to holders.** A launch may name `addresses.holderVault` as its creator fee recipient (`feesToHolders: true` on the indexer row, `?feesToHolders=1` filters). Its creator share is bought back into the token and sent to holders pro rata every hour through `addresses.disperse`. `indexer.distributions(token)` lists the rounds, `indexer.rewards(owner, token)` what a wallet got.
+
 ## Trading a pool directly
 
 If you have your own v4 routing, you do not need the router: `getLaunch(token).markets[i].poolKey` is the pool, `tokenIsCurrency0` tells you the direction, and a swap through PoolManager with that key is a par trade like any other.

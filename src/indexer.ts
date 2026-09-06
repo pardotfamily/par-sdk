@@ -65,6 +65,8 @@ export type IndexedLaunch = {
   creatorCollectedQuote: string;
   creatorCollectedToken: string;
   burnedToken: string;
+  /** The creator gave the creator share of fees to the holders (recipient is the holder vault). Permanent. */
+  feesToHolders?: boolean;
   tradeCount: number;
   lastPriceQuoteX18: string | null;
   lastPriceEth: number | null;
@@ -169,6 +171,31 @@ export type LaunchesQuery = {
   tokenIn?: Address[];
 };
 
+export type Distribution = { id: string; round: number; total: string; recipients: number; txHash: Hex; timestamp: number };
+export type Distributions = {
+  token: Address;
+  vault: Address | null;
+  wallet: Address | null;
+  rounds: number;
+  lastAt: number | null;
+  /** Sum of every round, in token units. */
+  total: string;
+  items: Distribution[];
+};
+export type Reward = { id: string; token: Address; amount: string; txHash: Hex; timestamp: number };
+export type Rewards = { owner: Address; total: string | null; items: Reward[] };
+export type Buyback = { id: string; amount: string; txHash: Hex; timestamp: number };
+export type Buybacks = {
+  wallet: Address | null;
+  token: Address | null;
+  /** $par burned, in wei units. */
+  burned: string;
+  /** ETH the buyback wallet paid for it, in wei. */
+  ethSpent: string;
+  count: number;
+  items: Buyback[];
+};
+
 export class ParIndexer {
   constructor(private readonly baseUrl: string = INDEXER_URL, private readonly fetchImpl: typeof fetch = fetch) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
@@ -250,6 +277,21 @@ export class ParIndexer {
   /** Fee collections the locker made for a token, newest first. */
   fees(token: Address, limit?: number) {
     return this.get<FeeCollection[]>("/fees", { token, limit });
+  }
+
+  /** Holder-rewards rounds of a "fees to holders" launch, newest first, with totals. */
+  distributions(token: Address, limit?: number) {
+    return this.get<Distributions>("/distributions", { token, limit });
+  }
+
+  /** What a wallet received from holder rewards; `token` narrows it (and fills `total`). */
+  rewards(owner: Address, token?: Address, limit?: number) {
+    return this.get<Rewards>("/rewards", { owner, token, limit });
+  }
+
+  /** $par bought with protocol fees and burned, newest first, with totals. */
+  buybacks(limit?: number) {
+    return this.get<Buybacks>("/buybacks", { limit });
   }
 
   /**
