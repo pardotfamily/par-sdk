@@ -7,7 +7,7 @@ Indexer: https://api.par.family (public, no key)
 Contracts source: https://github.com/pardotfamily/par
 Contact: X @pardotfamily, CET
 
-## 0. Model
+## Model
 
 Every par token is a plain ERC20 with fixed supply 1e27 (1,000,000,000 * 1e18), 18 decimals, no mint, no owner, no transfer hooks.
 The full supply is in one Uniswap v4 pool on the canonical PoolManager, hooks = 0x0, in one locked liquidity position. No bonding curve, no graduation, no migration. Tradable on v4 from the launch block.
@@ -16,7 +16,163 @@ Two stacks:
 - single: one token, one pool
 - multi: one token, 1 to 5 pools, each in a different quote asset, same token address
 
-## 1. Addresses
+## Integration with the SDK
+
+TypeScript, built on viem. Covers discovery, metadata, prices, trade history, quotes, buy and sell transactions and the indexer. Node 18+ and browsers. Nothing is signed inside the SDK; buildBuy and buildSell return { to, data, value } for any wallet library. If you route Uniswap v4 with your own contracts, take the PoolKey from the SDK and skip step 7; the appendix has the raw ABI.
+
+Repo: https://github.com/pardotfamily/par-sdk (README, source, dist). Version 0.2.1.
+
+### 1. Install
+
+```sh
+npm i viem github:pardotfamily/par-sdk
+```
+
+```ts
+import { createPar, buildApprove, ADDRESSES, FACTORY_DEPLOY_BLOCK, MULTI_FACTORY_DEPLOY_BLOCK } from "par-sdk";
+
+const par = createPar({ rpcUrl: process.env.RPC_URL });
+// or: createPar({ client: yourViemPublicClient })
+// or: createPar() for the public node (rate limited, 10000 block eth_getLogs, no batching)
+```
+
+### 2. Discover launches
+
+Backfill, both factories, one call per block range (max 10000 blocks on the public RPC):
+```ts
+for (let from = FACTORY_DEPLOY_BLOCK; from <= head; from += 10_000n) {
+  const launches = await par.getLaunches(from, from + 9_999n);
+  // LaunchEvent: { token, kind: "single" | "multi", deployer, launchConfigId, poolFee, pairTokens[], poolIds[], blockNumber, transactionHash }
+}
+```
+
+Live:
+```ts
+const stop = par.watchLaunches((l) => onNewToken(l.token));   // polls every 2 s; call stop() to unsubscribe
+```
+
+Or from the indexer, no RPC needed:
+```ts
+const rows = await par.indexer.launches({ orderBy: "createdAt", orderDirection: "desc", limit: 100 });
+const all  = await par.indexer.allLaunches();   // paged, every launch
+```
+
+### 3. Resolve a token
+
+```ts
+const t = await par.getTradable(token);   // null when not a par token
+```
+t is the on-chain launch record plus the ETH route of every market:
+```
+t.token, t.kind ("single" | "multi"), t.factory, t.router, t.locker
+t.deployer, t.creatorFeeRecipient
+t.poolFee          uint24, 10000 = 1%. Same for every market.
+t.tickSpacing, t.baseFeeBps, t.creatorTaxBps, t.protocolFeeShareBps, t.launchedAt
+t.markets[]        { index, pairToken (address(0) = ETH), quoteSymbol, quoteDecimals, poolKey, poolId, tokenIsCurrency0, positionId, liquidity, tickLower, tickUpper, phantomQuote }
+t.routes[]         per market: { buyHops, sellHops, qualifies } or null when ETH cannot reach that quote
+```
+Cache t per token; it never changes after launch. par.getLaunch(token) is the same without routes.
+
+### 4. Metadata
+
+```ts
+const m = await par.getTokenMetadata(token);
+// { token, name, symbol, decimals, totalSupply, deployer, logo (ipfs://), logoUrl (https), description, socials { twitter, telegram, discord, website, farcaster } }
+```
+All of it lives on the token contract, set at launch, immutable. totalSupply starts at 1e27 and falls as fees are burned.
+
+### 5. Price
+
+```ts
+const prices = await par.getSpotPrices(t);   // bigint[] per market, raw quote units per 1e18 token
+const human = Number(prices[0]) / 10 ** t.markets[0].quoteDecimals;
+```
+Market cap = price * 1e9 (every token has the same supply). For a multi token weight the markets by tokens left in each pool, or take lastPriceEth from the indexer row.
+
+### 6. Trades (history and live)
+
+```ts
+const trades = await par.getTrades(t, fromBlock, toBlock);   // all markets, sorted by block and log index
+// TradeEvent: { poolId, side: "buy" | "sell", tokenAmount, quoteAmount, priceX18, sender, blockNumber, transactionHash, logIndex }
+const stop = par.watchTrades(t, (tr) => onTrade(tr));
+```
+sender is the router that hit the pool, not the trader. Trader = tx.from; the indexer already resolves it (step 8). Multi token: match tr.poolId to t.markets[i].poolId to know which quote the trade was in.
+
+### 7. Buy and sell
+
+Quotes are eth_call simulations. No balance or approval needed.
+```ts
+const tokensOut = await par.quoteBuy(t, ethIn);              // bigint
+const ethOut    = await par.quoteSell(t, tokensIn, owner);   // bigint
+```
+
+Buy with native ETH. Works for every quote asset ETH can reach, single or multi (split over all markets, slippage floor on the total):
+```ts
+const buy = await par.buildBuy(t, ethIn, recipient, 100);   // slippage in bps, default 100 = 1%
+// { to, data, value, expectedOut }
+const hash = await walletClient.sendTransaction({ to: buy.to, data: buy.data, value: buy.value });
+```
+
+Sell to native ETH. Approve the launch router once per token, then build:
+```ts
+const approve = buildApprove(t.token, t.router);   // { to, data, value: 0n }, max allowance
+await walletClient.sendTransaction(approve);
+const sell = await par.buildSell(t, tokensIn, owner, 100);   // owner = wallet that holds the tokens and receives ETH
+await walletClient.sendTransaction({ to: sell.to, data: sell.data, value: sell.value });
+```
+
+Reverts to handle: SlippageExceeded(amountOut, minAmountOut), RouteBroken(index), RouteEndMismatch(expected, actual). Refresh the quote and retry.
+
+Trade in the pool's own quote instead of ETH:
+```ts
+import { buildSwapInQuote } from "par-sdk";
+const tx = buildSwapInQuote(t, t.markets[0], "buy", quoteIn, minTokensOut, recipient);   // ERC20 quote: approve t.router first
+```
+
+Own v4 routing: use t.markets[i].poolKey and t.markets[i].tokenIsCurrency0 with your contracts. The pools are standard v4 pools with no hook. Appendix A7 has the router ABI if you need to call it from another language.
+
+### 8. Indexer
+
+Same data as the public API, typed. Public, no key, no RPC needed.
+```ts
+const ix = par.indexer;   // or new ParIndexer("https://api.par.family")
+
+await ix.health();
+await ix.launches({ orderBy, orderDirection, limit, offset, deployer, q, tokenIn, window });
+//   orderBy: createdAt | lastTradeAt | tradeCount | totalVolumeQuote | marketCap | recentVolume
+await ix.allLaunches();
+await ix.launchCount();
+await ix.launch(token);                                   // IndexedLaunch or null
+await ix.trades(token, { limit, wallet });                // newest first, trader resolved, priceEth
+await ix.candles(token, "5m", { limit, before });         // 1m 5m 15m 1h 4h 1d; quote and ETH OHLC
+await ix.holders(token, limit);
+await ix.positions(wallet);                               // every par token a wallet holds, with cost basis
+await ix.fees(token);
+await ix.distributions(token);  await ix.rewards(owner, token);  await ix.buybacks();
+await ix.stats();                                         // platform totals
+ix.eventsUrl();                                           // SSE endpoint, one "batch" event per indexed block range
+```
+Row shapes: appendix A8. Amounts are decimal strings in raw units, timestamps unix seconds, addresses lowercase.
+
+### 9. Display
+
+Trade fee to show = t.poolFee / 10000 percent (1% base plus creator tax, 0 to 10%). par takes no integrator fee; add your own in your router if you want.
+Badge feesToHolders when creatorFeeRecipient equals ADDRESSES.holderVault (indexer rows carry the flag).
+Multi tokens: one address, several pools. Sum volume and trades across markets. Chart in ETH (candles' *Eth fields).
+
+### 10. Order of work
+
+1. watchLaunches or indexer.launches for discovery.
+2. getTradable + getTokenMetadata per token, cache both.
+3. getSpotPrices or indexer for price; watchTrades or indexer.trades and candles for charts.
+4. quoteBuy/quoteSell, buildBuy/buildSell (or own routing with t.markets[i].poolKey).
+5. Test on $par 0x507B6F349a80114097A67B8b4677367acC15b220 (ETH quoted, single) and any indexer row with marketCount > 1 (multi).
+
+## Appendix: raw contracts and API
+
+For own v4 routing, other languages, or checking what the SDK does.
+
+## A1. Addresses
 
 ```
 PoolManager (Uniswap v4)      0x8366a39CC670B4001A1121B8F6A443A643e40951
@@ -40,7 +196,7 @@ USDG                          0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168
 $par                          0x507B6F349a80114097A67B8b4677367acC15b220   ETH quoted, single, use for testing
 ```
 
-## 2. Discover launches
+## A2. Discover launches
 
 Subscribe to both factories.
 
@@ -73,9 +229,9 @@ function poolIdFor(address token, uint256 index) view returns (bytes32);
 
 Is X a par token: getLaunchedToken(X).exists on either factory.
 
-Alternative: GET https://api.par.family/launches (section 8) or https://par.family/tokenlist.json (Uniswap token list, multi tokens have extensions.markets[]).
+Alternative: GET https://api.par.family/launches (A8) or https://par.family/tokenlist.json (Uniswap token list, multi tokens have extensions.markets[]).
 
-## 3. Token metadata
+## A3. Token metadata
 
 On the token contract, set at launch, immutable:
 ```solidity
@@ -91,7 +247,7 @@ function contractURI() view returns (string);
 ```
 Images: square, max 512 px, PNG/JPEG/GIF/WebP.
 
-## 4. Pool key, poolId
+## A4. Pool key, poolId
 
 ```
 currency0   = min(token, pairToken)     // numeric compare; address(0) = native ETH is always currency0
@@ -106,7 +262,7 @@ poolFee = (baseFeeBps + creatorTaxBps) * 100. baseFeeBps = 100. creatorTaxBps 0 
 
 tokenIsCurrency0 = (currency0 == token).
 
-## 5. Price
+## A5. Price
 
 Read slot0 from PoolManager storage:
 ```
@@ -126,7 +282,7 @@ Multi: price each pool, weight by tokens remaining in each pool, or take lastPri
 
 Liquidity: one locked position per pool from opening price to max tick. Cannot be removed. Inventory: tokensOnCurve and quoteRaised on the indexer row.
 
-## 6. Trades (read)
+## A6. Trades (read)
 
 Filter PoolManager logs by id = poolId:
 ```solidity
@@ -140,16 +296,16 @@ quoteDelta = tokenIsCurrency0 ? amount1 : amount0
 isBuy       = tokenDelta > 0            // positive = swapper received, negative = swapper paid
 tokenAmount = abs(tokenDelta)
 quoteAmount = abs(quoteDelta)
-price       = from sqrtPriceX96, section 5
+price       = from sqrtPriceX96, A5
 trader      = tx.from                   // event.sender is the router, not the trader
 fee         = LP fee charged, equals poolFee. Buys pay it in quote, sells pay it in token.
 ```
 
-## 7. Trades (execute)
+## A7. Trades (execute)
 
 ### 7a. Own v4 routing
 
-The pool is a standard v4 pool. Swap through PoolManager with the PoolKey from section 4, zeroForOne by direction, your own unlock callback or Universal Router. Native ETH pools settle in native ETH (currency address(0)). Nothing par specific.
+The pool is a standard v4 pool. Swap through PoolManager with the PoolKey from A4, zeroForOne by direction, your own unlock callback or Universal Router. Native ETH pools settle in native ETH (currency address(0)). Nothing par specific.
 
 Multi token: each pool is independent. Trade the pool whose quote you hold or split across pools.
 
@@ -202,69 +358,7 @@ RouteEndMismatch(address expected, address actual)
 
 Approvals: token -> router for sells. ERC20 quote -> router for buyWithQuote / swapExactIn with ERC20 in. None for ETH in.
 
-## 7c. SDK (TypeScript, viem)
-
-Does sections 2 to 7b and 8. Node 18+ and browsers. Nothing is signed inside; build* return { to, data, value } for any wallet lib.
-
-```sh
-npm i viem github:pardotfamily/par-sdk
-```
-
-```ts
-import { createPar, buildApprove, ADDRESSES, FACTORY_DEPLOY_BLOCK } from "par-sdk";
-
-const par = createPar({ rpcUrl: RPC_URL });   // omit rpcUrl for the public node
-
-// discover
-const launches = await par.getLaunches(fromBlock, toBlock);   // both factories, max 10000 blocks per call on public RPC
-// [{ token, kind: "single" | "multi", deployer, pairTokens, poolIds, blockNumber, transactionHash }]
-const stop = par.watchLaunches((l) => { /* new token */ });
-
-// resolve a token
-const t = await par.getTradable(token);   // null if not par
-// t = launch record plus routes[]: { token, kind, router, markets: [{ index, pairToken, poolKey, poolId, tokenIsCurrency0, ... }], routes }
-const launch = await par.getLaunch(token);   // same without routes
-
-// metadata
-const meta = await par.getTokenMetadata(token);   // { name, symbol, logo, logoUrl, description, socials, deployer }
-
-// price
-const prices = await par.getSpotPrices(t);   // bigint[] per market, raw quote units per 1e18 token
-
-// trades read
-const trades = await par.getTrades(launch, fromBlock, toBlock);   // every market
-// [{ poolId, side: "buy" | "sell", tokenAmount, quoteAmount, priceX18, sender, blockNumber, transactionHash, logIndex }]
-const stopTrades = par.watchTrades(launch, (tr) => { /* ... */ });
-
-// quotes (eth_call simulation, no balance or approval needed)
-const tokensOut = await par.quoteBuy(t, ethIn);              // bigint
-const ethOut    = await par.quoteSell(t, tokensIn, owner);   // bigint
-
-// buy with ETH: single or multi, all markets ETH can reach, slippage floor on the total
-const buy = await par.buildBuy(t, ethIn, recipient, slippageBps);   // { to, data, value, expectedOut }
-await walletClient.sendTransaction(buy);
-
-// sell to ETH: approve the launch router once, then build. owner = the wallet that holds and receives.
-const approve = buildApprove(t.token, t.router);   // { to, data, value: 0n }
-const sell = await par.buildSell(t, tokensIn, owner, slippageBps);   // { to, data, value, expectedOut }
-
-// indexer client, same endpoints as section 8, typed
-const ix = par.indexer;
-await ix.launches({ orderBy: "recentVolume", limit: 50 });
-await ix.launch(token);
-await ix.trades(token, { limit: 500, wallet });
-await ix.candles(token, "5m", { limit: 300, before });
-await ix.holders(token, 100);
-await ix.positions(wallet);
-await ix.allLaunches();
-await ix.stats();
-```
-
-Lower level exports: ADDRESSES, robinhoodChain, createParClient, all ABIs (factoryAbi, multiFactoryAbi, routerAbi, multiRouterAbi, lockerAbi, multiLockerAbi, feeEscrowAbi, quotePricerAbi, poolManagerAbi, launcherTokenAbi), poolKeyFor, poolIdOf, tokenIsCurrency0, readSqrtPriceX96, priceX18FromSqrt, getEthRoute, buildBuyWithEth, buildSellToEth, buildSwapInQuote, quoteBuyWithEth, quoteSellToEth, splitAmount, withSlippage, parseLaunchLogs, parseTradeLogs, ParIndexer.
-
-Version 0.2.1. Repo and README: https://github.com/pardotfamily/par-sdk
-
-## 8. Indexer API
+## A8. Indexer API
 
 Base https://api.par.family. GET only. CORS open. gzip. Send a User-Agent. Tell us if you need high sustained rates. Trades are queryable about 1 s after the block.
 
@@ -322,27 +416,18 @@ timestamp, blockNumber, logIndex
 market   index for multi tokens, null for single. Multi rows also carry pairToken, quoteSymbol, quoteDecimals of that market.
 ```
 
-## 9. Fees
+## A9. Fees
 
 Trade fee = poolFee, LP fee of the pool. Nothing else is charged. par takes no integrator fee. Add your own in your router if you want.
 baseFeeBps 100 split 50/50 creator/protocol. creatorTaxBps 100% to creator. Collected from the locked position by a keeper (FeesCollected on the locker), creator claims from PairPadFeeEscrow.
 Protocol share in token is burned (ProtocolShareBurned). Protocol share in quote goes 80% to buy and burn $par for launches with protocolFeeRecipient = PairPadFeeSplitter.
 feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator share is bought back into the token and sent to holders pro rata (Dispersed on PairPadDisperse).
 
-## 10. Notes
+## A10. Notes
 
-- About half of the launches are not ETH quoted. pairToken == address(0) filters ETH pairs. Others: route via section 7b or price in quote.
+- About half of the launches are not ETH quoted. pairToken == address(0) filters ETH pairs. Others: route via A7b or price in quote.
 - Multi tokens: one address, several poolIds. Sum volume and trades across pools. Chart in ETH.
 - creatorTaxBps up to 1000 is inside poolFee. Show it.
 - burnedToken = tokens sent to address(0), reduces circulating supply.
 - No hook, no admin on pools. Nothing can pause, blacklist or change a pool fee after launch.
 - Public RPC: 10000 block eth_getLogs, no batching, retries needed. Use own node or provider in production.
-
-## 11. Order of work
-
-1. Watch TokenLaunched on both factories (or poll /launches).
-2. Per launch: read metadata from the token, build PoolKey(s), compute poolId(s).
-3. Charts and trades: Swap on PoolManager filtered by poolId, or /trades and /candles.
-4. Trading: own v4 routing with the PoolKey, or PairPadRouter / PairPadMultiRouter.
-5. Show poolFee as the trade fee.
-6. Test with $par 0x507B6F349a80114097A67B8b4677367acC15b220 and any row with marketCount > 1.
