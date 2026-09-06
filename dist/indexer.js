@@ -92,6 +92,10 @@ export class ParIndexer {
     buybacks(limit) {
         return this.get("/buybacks", { limit });
     }
+    /** Platform-wide totals: launches, holders, trades, volume, creator earnings, $par burned and bought back. */
+    stats() {
+        return this.get("/stats");
+    }
     /**
      * Live feed of indexer events (server-sent events). Browser and Node 20+
      * expose EventSource; the URL is returned for other runtimes.

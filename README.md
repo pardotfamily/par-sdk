@@ -88,6 +88,7 @@ await ix.holders(token, 100);
 await ix.positions(wallet);                                  // every par token a wallet holds, with cost basis
 await ix.fees(token);                                        // locker fee collections
 await ix.allLaunches();                                      // everything, paged
+await ix.stats();                                            // platform totals: launches, holders, trades, volumeEth, $par burned
 ```
 
 ## Lower level

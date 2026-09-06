@@ -185,6 +185,30 @@ export type Distributions = {
 export type Reward = { id: string; token: Address; amount: string; txHash: Hex; timestamp: number };
 export type Rewards = { owner: Address; total: string | null; items: Reward[] };
 export type Buyback = { id: string; amount: string; txHash: Hex; timestamp: number };
+/** Platform totals from `/stats`. ETH figures as numbers; wei figures as decimal strings. */
+export type PlatformStats = {
+  at: number;
+  launches: number;
+  launches24h: number;
+  launchesTraded: number;
+  /** Wallets holding at least one launch token (pool and lockers excluded). */
+  holders: number;
+  holderPositions: number;
+  trades: number;
+  trades24h: number;
+  volumeEth: number;
+  creatorEarnedEth: number;
+  creatorCollectedEth: number;
+  par: {
+    token: Address;
+    priceEth: number | null;
+    burned: string;
+    buybackBurned: string;
+    buybackEth: string;
+    buybacks: number;
+  } | null;
+};
+
 export type Buybacks = {
   wallet: Address | null;
   token: Address | null;
@@ -292,6 +316,11 @@ export class ParIndexer {
   /** $par bought with protocol fees and burned, newest first, with totals. */
   buybacks(limit?: number) {
     return this.get<Buybacks>("/buybacks", { limit });
+  }
+
+  /** Platform-wide totals: launches, holders, trades, volume, creator earnings, $par burned and bought back. */
+  stats() {
+    return this.get<PlatformStats>("/stats");
   }
 
   /**

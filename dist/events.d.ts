@@ -156,9 +156,9 @@ export type TradeEvent = {
     logIndex: number;
 };
 /**
- * Decode Swap logs for one market. Amounts in the event are the pool's deltas
- * (negative = paid out of the pool), so the sign of the token side says whether
- * the trade was a buy.
+ * Decode Swap logs for one market. Amounts in the event are the swapper's
+ * deltas (positive = received from the pool, negative = paid into it), so a
+ * positive token side is a buy.
  */
 export declare function parseTradeLogs(market: Pick<ParMarket, "poolId" | "tokenIsCurrency0">, logs: Log[]): TradeEvent[];
 /** Trades of one market in a block range. */

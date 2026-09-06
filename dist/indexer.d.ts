@@ -196,6 +196,29 @@ export type Buyback = {
     txHash: Hex;
     timestamp: number;
 };
+/** Platform totals from `/stats`. ETH figures as numbers; wei figures as decimal strings. */
+export type PlatformStats = {
+    at: number;
+    launches: number;
+    launches24h: number;
+    launchesTraded: number;
+    /** Wallets holding at least one launch token (pool and lockers excluded). */
+    holders: number;
+    holderPositions: number;
+    trades: number;
+    trades24h: number;
+    volumeEth: number;
+    creatorEarnedEth: number;
+    creatorCollectedEth: number;
+    par: {
+        token: Address;
+        priceEth: number | null;
+        burned: string;
+        buybackBurned: string;
+        buybackEth: string;
+        buybacks: number;
+    } | null;
+};
 export type Buybacks = {
     wallet: Address | null;
     token: Address | null;
@@ -249,6 +272,8 @@ export declare class ParIndexer {
     rewards(owner: Address, token?: Address, limit?: number): Promise<Rewards>;
     /** $par bought with protocol fees and burned, newest first, with totals. */
     buybacks(limit?: number): Promise<Buybacks>;
+    /** Platform-wide totals: launches, holders, trades, volume, creator earnings, $par burned and bought back. */
+    stats(): Promise<PlatformStats>;
     /**
      * Live feed of indexer events (server-sent events). Browser and Node 20+
      * expose EventSource; the URL is returned for other runtimes.

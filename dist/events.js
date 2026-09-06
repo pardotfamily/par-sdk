@@ -76,9 +76,9 @@ export function watchLaunches(client, onLaunch, pollingInterval = 2_000) {
     });
 }
 /**
- * Decode Swap logs for one market. Amounts in the event are the pool's deltas
- * (negative = paid out of the pool), so the sign of the token side says whether
- * the trade was a buy.
+ * Decode Swap logs for one market. Amounts in the event are the swapper's
+ * deltas (positive = received from the pool, negative = paid into it), so a
+ * positive token side is a buy.
  */
 export function parseTradeLogs(market, logs) {
     const swaps = parseEventLogs({
@@ -94,7 +94,7 @@ export function parseTradeLogs(market, logs) {
         const quoteDelta = market.tokenIsCurrency0 ? s.args.amount1 : s.args.amount0;
         out.push({
             poolId: s.args.id,
-            side: tokenDelta < 0n ? "buy" : "sell",
+            side: tokenDelta > 0n ? "buy" : "sell",
             tokenAmount: tokenDelta < 0n ? -tokenDelta : tokenDelta,
             quoteAmount: quoteDelta < 0n ? -quoteDelta : quoteDelta,
             priceX18: priceX18FromSqrt(s.args.sqrtPriceX96, market.tokenIsCurrency0),
