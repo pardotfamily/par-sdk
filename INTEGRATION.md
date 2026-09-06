@@ -1,336 +1,286 @@
-# par — integration guide
+# par integration
 
-par (https://par.family) is a token launchpad on **Robinhood Chain**. This document is everything needed to list, price, chart and trade par tokens end to end. Where this document and the chain disagree, the chain is right; tell us and we will fix the document.
+Chain: Robinhood Chain, chain id 4663, Arbitrum Orbit L2.
+RPC: https://rpc.mainnet.chain.robinhood.com (public, rate limited, eth_getLogs max 10000 blocks per call, no JSON-RPC batching)
+Explorer: https://robinhoodchain.blockscout.com
+Indexer: https://api.par.family (public, no key)
+Contracts source: https://github.com/pardotfamily/par
+Contact: X @pardotfamily, CET
 
-Contacts: X @pardotfamily · team is in CET (UTC+2). Source: https://github.com/pardotfamily/par (contracts) · https://github.com/pardotfamily/par-sdk (TypeScript SDK) · docs: https://par.family/docs
+## 0. Model
 
----
+Every par token is a plain ERC20 with fixed supply 1e27 (1,000,000,000 * 1e18), 18 decimals, no mint, no owner, no transfer hooks.
+The full supply is in one Uniswap v4 pool on the canonical PoolManager, hooks = 0x0, in one locked liquidity position. No bonding curve, no graduation, no migration. Tradable on v4 from the launch block.
+Quote asset is native ETH (currency address(0)) or any ERC20.
+Two stacks:
+- single: one token, one pool
+- multi: one token, 1 to 5 pools, each in a different quote asset, same token address
 
-## 1. What a par token is
-
-- A plain ERC-20 (`PairPadLauncherToken`): fixed supply **1,000,000,000 × 1e18**, 18 decimals, no mint, no owner, no transfer hooks, no tax logic in the token. It is `ERC20Burnable`, so `burn()` exists.
-- Its whole supply sits in a **Uniswap v4 pool** on the canonical PoolManager, **no hook** (`hooks = 0x0`), in a single liquidity position that is **locked forever** in a locker contract.
-- There is **no bonding curve, no graduation, no migration**. The pool is live and tradable on v4 from the launch block. Anything that already routes Uniswap v4 swaps trades par tokens with zero custom code.
-- Two launch stacks:
-  - **Single-market**: one token, one pool, one quote asset.
-  - **Multi-market**: one token, **1–5 pools**, each quoted in a different asset (e.g. one token trading against AAPL, MSFT, NVDA, GOOGL, TSLA at once). Same token address in every pool; the supply is split equally across the pools.
-- Quote asset can be **native ETH** (`address(0)` as currency, the v4 convention) or **any ERC-20** on the chain (USDG, WETH, tokenised stocks, other par tokens…).
-
-## 2. Chain
-
-| | |
-|---|---|
-| Network | Robinhood Chain (Arbitrum Orbit L2) |
-| Chain id | **4663** |
-| Public RPC | `https://rpc.mainnet.chain.robinhood.com` (rate-limited; `eth_getLogs` ranges ≤ 10,000 blocks; JSON-RPC batching is unreliable, send single requests) |
-| Explorer | `https://robinhoodchain.blockscout.com` |
-| Native currency | ETH |
-| Block time | ~0.25–1 s |
-
-## 3. Addresses (mainnet, all verified on Blockscout)
+## 1. Addresses
 
 ```
-Uniswap v4 PoolManager        0x8366a39CC670B4001A1121B8F6A443A643e40951
+PoolManager (Uniswap v4)      0x8366a39CC670B4001A1121B8F6A443A643e40951
 
-Single-market stack
-  PairPadLaunchFactory        0x9d33Ba78389c8772bC114Cba47Dc1985E933e76F   (deployed at block 53890474)
-  PairPadRouter               0x73d84bdbB1983Fa7eD8FCBcE40bc308997cEd120
-  PairPadLocker               0x8a6d37B2E6a2AC7970eF69d2932757F04be0A231
+PairPadLaunchFactory          0x9d33Ba78389c8772bC114Cba47Dc1985E933e76F   deployed at block 53890474
+PairPadRouter                 0x73d84bdbB1983Fa7eD8FCBcE40bc308997cEd120
+PairPadLocker                 0x8a6d37B2E6a2AC7970eF69d2932757F04be0A231
 
-Multi-market stack
-  PairPadMultiLaunchFactory   0x3ea29975a79900179F3e1aEF93347Ba4210c29C1   (deployed at block 55587224)
-  PairPadMultiRouter          0x458D2a59c2F3dd32775a64eE72004561440d64Df
-  PairPadMultiLocker          0x5826FBB6201DaAcD924A3d292841DA9142952D59
+PairPadMultiLaunchFactory     0x3ea29975a79900179F3e1aEF93347Ba4210c29C1   deployed at block 55587224
+PairPadMultiRouter            0x458D2a59c2F3dd32775a64eE72004561440d64Df
+PairPadMultiLocker            0x5826FBB6201DaAcD924A3d292841DA9142952D59
 
-Shared
-  PairPadFeeEscrow            0x1C27e8F0c2a754DB23ab1608fA09c068D54d4386
-  PairPadQuotePricer          0x9EfC6EFA4c5F31e2BEC6CC174Ba7bB8f0b57d563
-  PairPadFeeSplitter          0x913A93cc2676F49454173323B85762b3e5906c43   (protocol fee recipient of new launches)
-  PairPadHolderVault          0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C   (creator fee recipient of "fees to holders" launches)
-  PairPadDisperse             0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC
+PairPadFeeEscrow              0x1C27e8F0c2a754DB23ab1608fA09c068D54d4386
+PairPadQuotePricer            0x9EfC6EFA4c5F31e2BEC6CC174Ba7bB8f0b57d563
+PairPadFeeSplitter            0x913A93cc2676F49454173323B85762b3e5906c43
+PairPadHolderVault            0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C
+PairPadDisperse               0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC
 
-Assets
-  WETH                        0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73
-  USDG                        0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168
-  $par (the protocol token)   0x507B6F349a80114097A67B8b4677367acC15b220
+WETH                          0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73
+USDG                          0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168
+$par                          0x507B6F349a80114097A67B8b4677367acC15b220   ETH quoted, single, use for testing
 ```
 
-Nothing par-related exists before block 53,890,474.
+## 2. Discover launches
 
-## 4. Discovering launches
+Subscribe to both factories.
 
-### 4.1 On-chain
+PairPadLaunchFactory:
+```solidity
+event TokenLaunched(address indexed token, bytes32 indexed poolId, address indexed deployer, address pairToken, uint256 launchConfigId, uint24 poolFee);
+```
 
-Single-market factory:
+PairPadMultiLaunchFactory (one TokenLaunched plus one MarketOpened per pool, same tx):
+```solidity
+event TokenLaunched(address indexed token, address indexed deployer, uint256 launchConfigId, uint24 poolFee, address[] pairTokens);
+event MarketOpened(address indexed token, bytes32 indexed poolId, uint256 marketIndex, address pairToken, uint256 positionId, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 tokenAmount, uint256 phantomQuote);
+```
+
+Backfill from block 53890474 (single) and 55587224 (multi), 10000 blocks per eth_getLogs on the public RPC.
+
+Read back:
+```solidity
+// PairPadLaunchFactory
+function getLaunchedToken(address token) view returns (address token, address deployer, address creatorFeeRecipient, address pairToken, uint256 phantomQuote, uint24 poolFee, int24 tickSpacing, int24 tickLower, int24 tickUpper, uint128 liquidity, uint256 positionId, uint16 baseFeeBps, uint16 creatorTaxBps, uint16 protocolFeeShareBps, address protocolFeeRecipient, uint64 launchedAt, bool exists);
+function poolKeyFor(address token) view returns (PoolKey);
+function poolIdFor(address token) view returns (bytes32);
+
+// PairPadMultiLaunchFactory
+function getLaunchedToken(address token) view returns (address token, address deployer, address creatorFeeRecipient, uint24 poolFee, int24 tickSpacing, uint16 baseFeeBps, uint16 creatorTaxBps, uint16 protocolFeeShareBps, address protocolFeeRecipient, uint64 launchedAt, uint8 marketCount, bool exists);
+function getMarkets(address token) view returns (Market[]);   // { address pairToken; uint256 phantomQuote; int24 tickLower; int24 tickUpper; uint128 liquidity; uint256 positionId; }
+function poolKeysFor(address token) view returns (PoolKey[]);
+function poolIdFor(address token, uint256 index) view returns (bytes32);
+```
+
+Is X a par token: getLaunchedToken(X).exists on either factory.
+
+Alternative: GET https://api.par.family/launches (section 8) or https://par.family/tokenlist.json (Uniswap token list, multi tokens have extensions.markets[]).
+
+## 3. Token metadata
+
+On the token contract, set at launch, immutable:
+```solidity
+function name() view returns (string);
+function symbol() view returns (string);
+function decimals() view returns (uint8);        // 18
+function totalSupply() view returns (uint256);   // 1e27
+function logo() view returns (string);           // ipfs://<cid>, resolve with any gateway
+function description() view returns (string);
+function socials() view returns (string twitter, string telegram, string discord, string website, string farcaster);
+function getTokenInfo() view returns (address deployer, string logo, string description, Socials socials);
+function contractURI() view returns (string);
+```
+Images: square, max 512 px, PNG/JPEG/GIF/WebP.
+
+## 4. Pool key, poolId
+
+```
+currency0   = min(token, pairToken)     // numeric compare; address(0) = native ETH is always currency0
+currency1   = max(token, pairToken)
+fee         = poolFee                   // uint24, 10000 = 1.00%
+tickSpacing = tickSpacing from getLaunchedToken (10 for launch config 0)
+hooks       = 0x0000000000000000000000000000000000000000
+poolId      = keccak256(abi.encode(currency0, currency1, fee, tickSpacing, hooks))
+```
+
+poolFee = (baseFeeBps + creatorTaxBps) * 100. baseFeeBps = 100. creatorTaxBps 0 to 1000, fixed at launch. Range 10000 to 110000.
+
+tokenIsCurrency0 = (currency0 == token).
+
+## 5. Price
+
+Read slot0 from PoolManager storage:
+```
+slot         = keccak256(abi.encode(poolId, uint256(6)))
+word         = PoolManager.extsload(slot)
+sqrtPriceX96 = uint160(word)          // low 160 bits
+```
+Or take sqrtPriceX96 from the latest Swap event.
+
+Raw quote units per 1e18 token:
+```
+tokenIsCurrency0 ? sqrtPriceX96^2 * 1e18 / 2^192 : 2^192 * 1e18 / sqrtPriceX96^2
+```
+Divide by 10^quoteDecimals for a human price. Market cap = price * 1e9 (same supply on every token).
+
+Multi: price each pool, weight by tokens remaining in each pool, or take lastPriceEth from the indexer.
+
+Liquidity: one locked position per pool from opening price to max tick. Cannot be removed. Inventory: tokensOnCurve and quoteRaised on the indexer row.
+
+## 6. Trades (read)
+
+Filter PoolManager logs by id = poolId:
+```solidity
+event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee);
+```
+
+Decode:
+```
+tokenDelta = tokenIsCurrency0 ? amount0 : amount1
+quoteDelta = tokenIsCurrency0 ? amount1 : amount0
+isBuy       = tokenDelta > 0            // positive = swapper received, negative = swapper paid
+tokenAmount = abs(tokenDelta)
+quoteAmount = abs(quoteDelta)
+price       = from sqrtPriceX96, section 5
+trader      = tx.from                   // event.sender is the router, not the trader
+fee         = LP fee charged, equals poolFee. Buys pay it in quote, sells pay it in token.
+```
+
+## 7. Trades (execute)
+
+### 7a. Own v4 routing
+
+The pool is a standard v4 pool. Swap through PoolManager with the PoolKey from section 4, zeroForOne by direction, your own unlock callback or Universal Router. Native ETH pools settle in native ETH (currency address(0)). Nothing par specific.
+
+Multi token: each pool is independent. Trade the pool whose quote you hold or split across pools.
+
+### 7b. par routers
+
+No fee taken. They add native ETH in/out for pools quoted in other assets and one-tx split over multi pools.
 
 ```solidity
-event TokenLaunched(address indexed token, bytes32 indexed poolId, address indexed deployer,
-                    address pairToken, uint256 launchConfigId, uint24 poolFee);
+struct PoolKey { address currency0; address currency1; uint24 fee; int24 tickSpacing; address hooks; }
+struct Hop { PoolKey key; bool v3; }          // one step of the ETH<->quote route; v3 = Uniswap v3 pool, key.fee is the tier, tickSpacing and hooks 0
 ```
 
-Multi-market factory (one `TokenLaunched`, then one `MarketOpened` per pool, all in the launch tx):
-
+PairPadRouter 0x73d84bdbB1983Fa7eD8FCBcE40bc308997cEd120:
 ```solidity
-event TokenLaunched(address indexed token, address indexed deployer, uint256 launchConfigId,
-                    uint24 poolFee, address[] pairTokens);
-event MarketOpened(address indexed token, bytes32 indexed poolId, uint256 marketIndex, address pairToken,
-                   uint256 positionId, int24 tickLower, int24 tickUpper, uint128 liquidity,
-                   uint256 tokenAmount, uint256 phantomQuote);
+function swapExactIn(PoolKey key, bool zeroForOne, uint256 amountIn, uint256 minAmountOut, address recipient) payable returns (uint256 amountOut);
+    // swap in the pool's own quote. ETH quote buy: send msg.value = amountIn. ERC20 in: approve router first.
+function buyWithEth(PoolKey key, Hop[] leg, uint256 minTokensOut, address recipient) payable returns (uint256 tokensOut);
+    // msg.value = ETH in. leg = route ETH -> quote. Empty leg for ETH quoted pool.
+function sellToEth(PoolKey key, bool tokenIsCurrency0, uint256 tokensIn, Hop[] leg, uint256 minEthOut, address recipient) returns (uint256 ethOut);
+    // approve router for token first. leg = route quote -> ETH. Empty leg for ETH quoted pool.
 ```
 
-Watch both factories. Everything you need to trade is in these events: `token`, `pairToken`, `poolFee`, `poolId`.
-
-Read-back at any time:
-
+PairPadMultiRouter 0x458D2a59c2F3dd32775a64eE72004561440d64Df:
 ```solidity
-// single
-factory.getLaunchedToken(token)  -> (token, deployer, creatorFeeRecipient, pairToken, phantomQuote, poolFee, tickSpacing,
-                                     tickLower, tickUpper, liquidity, positionId, baseFeeBps, creatorTaxBps,
-                                     protocolFeeShareBps, protocolFeeRecipient, launchedAt, exists)
-factory.poolKeyFor(token)        -> PoolKey
-factory.poolIdFor(token)         -> bytes32
-// multi
-multiFactory.getLaunchedToken(token) -> (token, deployer, creatorFeeRecipient, poolFee, tickSpacing, baseFeeBps, creatorTaxBps,
-                                         protocolFeeShareBps, protocolFeeRecipient, launchedAt, marketCount, exists)
-multiFactory.getMarkets(token)       -> Market[] { pairToken, phantomQuote, tickLower, tickUpper, liquidity, positionId }
-multiFactory.poolKeysFor(token)      -> PoolKey[]
-```
-
-"Is `X` a par token?" = `getLaunchedToken(X).exists` on either factory.
-
-### 4.2 Off-chain (faster to bootstrap)
-
-- `GET https://api.par.family/launches?orderBy=createdAt&orderDirection=desc&limit=100` — paged, see §9.
-- `GET https://par.family/tokenlist.json` — Uniswap Token List of every launch; multi-market tokens carry `extensions.markets[]`.
-- `GET https://api.par.family/events` — server-sent events, one `batch` event per indexed block range; poll `/launches` on each.
-
-## 5. Token metadata
-
-Stored **on the token contract itself** at launch (immutable):
-
-```solidity
-name(), symbol(), decimals() = 18, totalSupply() = 1e27
-logo()        -> string   // usually "ipfs://<cid>"; resolve through any gateway, e.g. https://ipfs.io/ipfs/<cid>
-description() -> string
-socials()     -> (string twitter, string telegram, string discord, string website, string farcaster)
-getTokenInfo()-> (address deployer, string logo, string description, Socials socials)
-contractURI() -> string   // JSON metadata
-```
-
-Images are uploaded by the launch UI as square PNG/JPEG/GIF/WebP ≤ 512 px. `website` defaults to the token's page on par (`https://par.family/t/<16 hex>`) when the creator gave none. The indexer returns all of this resolved (`logoUrl` is an https URL).
-
-## 6. Pools and prices
-
-### 6.1 Pool key
-
-```
-currency0 = min(token, pairToken)   // numeric sort; native ETH is address(0) so it is always currency0
-currency1 = max(token, pairToken)
-fee       = poolFee                 // uint24, hundredths of a bip: 10000 = 1.00%
-tickSpacing = 10                    // launch config 0; read it from getLaunchedToken to be safe
-hooks     = 0x0000000000000000000000000000000000000000
-poolId    = keccak256(abi.encode(currency0, currency1, fee, tickSpacing, hooks))
-```
-
-`poolFee = (baseFeeBps + creatorTaxBps) × 100`. Base is 100 bps (1%); creator tax is 0–1000 bps, fixed at launch. So `10000` = plain 1% pool, `20000` = 1% + 1% creator tax, up to `110000`.
-
-### 6.2 Spot price
-
-From the PoolManager's storage (`extsload`; pool state is mapping slot 6, `slot0` is the first word, `sqrtPriceX96` its low 160 bits):
-
-```
-slot = keccak256(abi.encode(poolId, uint256(6)))
-sqrtPriceX96 = uint160(PoolManager.extsload(slot))
-```
-
-or from the latest `Swap` event's `sqrtPriceX96`. Then, as raw quote units per one whole token (1e18):
-
-```
-tokenIsCurrency0 ? sqrtP² × 1e18 / 2^192  :  2^192 × 1e18 / sqrtP²
-```
-
-Divide by `10^quoteDecimals` for a human number. **Market cap = price × 1e9** (every token has the same supply). For a multi-market token, price the token in each pool and weight by the tokens each pool still holds (or just use the indexer's `lastPriceEth`).
-
-### 6.3 Liquidity
-
-Every pool's liquidity is one locked position ranged from the opening price to the top of the range. There is no LP token to track, nothing can be removed. `tokensOnCurve` / `quoteRaised` on the indexer row give the pool's current inventory.
-
-## 7. Trades
-
-### 7.1 Reading
-
-Every trade is a standard v4 `Swap` on the PoolManager; filter by `id = poolId`:
-
-```solidity
-event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1,
-           uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee);
-```
-
-- Amounts are the **swapper's deltas**: **positive = received from the pool, negative = paid into the pool**.
-- Take the token side (`amount0` if `tokenIsCurrency0`, else `amount1`): **positive → buy**, **negative → sell**. The other side is the quote amount.
-- `sender` is the router that called the PoolManager (ours, yours, anyone's), **not** the trader. The trader is the transaction's `from`.
-- `fee` is the LP fee actually charged (= `poolFee`). Buys pay it in the quote, sells pay it in the token.
-- `sqrtPriceX96` is the post-trade price (§6.2).
-
-For history with traders, ETH-denominated prices and candles use the indexer (§9); it stores `trader` = tx `from`.
-
-### 7.2 Executing — option A: your own v4 routing (recommended if you already have it)
-
-The pool is a normal v4 pool. Swap through the PoolManager with the pool key above, `zeroForOne` set by direction, any settlement pattern you already use (Universal Router, your own unlock callback). Nothing par-specific. Settle native ETH pools with native ETH (currency `address(0)`), as usual on v4.
-
-For a multi-market token, each pool is independent; trade the one whose quote you hold, or split across several.
-
-### 7.3 Executing — option B: par routers (ETH in / ETH out for any quote, multi-market split)
-
-The routers add two things: paying in / receiving **native ETH** for pools quoted in another asset (they walk a route ETH → quote → token inside one PoolManager unlock), and, for multi-market tokens, one transaction split over all pools with the slippage floor on the total. They take **no fee**.
-
-Single-market (`PairPadRouter`):
-
-```solidity
-struct Hop { PoolKey key; bool v3; }   // one step of the ETH<->quote route; v3 = a Uniswap v3 pool (key.fee is the tier)
-
-// swap in the pool's own quote (send msg.value for an ETH-quoted buy; approve the router for ERC-20 in)
-function swapExactIn(PoolKey key, bool zeroForOne, uint256 amountIn, uint256 minAmountOut, address recipient)
-    payable returns (uint256 amountOut);
-
-// pay ETH for a token quoted in anything; leg = route ETH -> quote (empty for ETH-quoted pools)
-function buyWithEth(PoolKey key, Hop[] leg, uint256 minTokensOut, address recipient)
-    payable returns (uint256 tokensOut);
-
-// sell for ETH; approve the router for the token first; leg = route quote -> ETH
-function sellToEth(PoolKey key, bool tokenIsCurrency0, uint256 tokensIn, Hop[] leg, uint256 minEthOut, address recipient)
-    returns (uint256 ethOut);
-```
-
-Multi-market (`PairPadMultiRouter`):
-
-```solidity
-struct Leg { uint8 market; Hop[] hops; uint256 amountIn; }   // one pool of the token and how much goes through it
+struct Leg { uint8 market; Hop[] hops; uint256 amountIn; }   // market = index from getMarkets
 
 function buyWithEth(address token, Leg[] legs, uint256 minTokensOut, address recipient) payable returns (uint256 tokensOut);
+    // msg.value = sum of legs[].amountIn. hops = ETH -> quote of that market.
 function sellToEth(address token, Leg[] legs, uint256 minEthOut, address recipient) returns (uint256 ethOut);
-function buyWithQuote(address token, uint8 market, uint256 quoteIn, uint256 minTokensOut, address recipient) payable returns (uint256);
+    // approve router for token. amountIn in tokens per leg. hops = quote -> ETH.
+function buyWithQuote(address token, uint8 market, uint256 quoteIn, uint256 minTokensOut, address recipient) payable returns (uint256 tokensOut);
 function sellToQuotes(address token, Leg[] legs, uint256[] minOuts, address recipient);
 ```
 
-The route for a quote asset comes from the pricer:
-
+Route for a quote asset, from PairPadQuotePricer 0x9EfC6EFA4c5F31e2BEC6CC174Ba7bB8f0b57d563:
 ```solidity
-PairPadQuotePricer.route(address quoteToken) -> (Hop[] hops, bool qualifies)   // hops are quote -> ETH; reverse them for a buy
-PairPadQuotePricer.priceEthAmountInQuote(address quoteToken, uint256 ethAmount) -> uint256
-PairPadQuotePricer.isPriceable(address quoteToken) -> bool
+function route(address quoteToken) view returns (Hop[] hops, bool qualifies);   // hops are quote -> ETH. Reverse the array for a buy. Empty for address(0). Empty and !qualifies = no ETH path, trade in quote only.
+function priceEthAmountInQuote(address quoteToken, uint256 ethAmount) view returns (uint256);
+function isPriceable(address quoteToken) view returns (bool);
 ```
 
-Empty `hops` for an ETH-quoted pool. If `route()` returns no hops the quote has no ETH path; trade that pool in its quote directly.
+Quoting: eth_call the same function, apply slippage to the returned amount, send with that as min.
 
-Quotes: simulate the call (`eth_call` / viem `simulateContract`) and apply your slippage to the result; the routers revert with `SlippageExceeded(amountOut, minAmountOut)`, `RouteBroken(index)`, `RouteEndMismatch(expected, actual)`.
-
-Approvals: sells through a router need `token.approve(router, amount)`; buys with ETH need none; buys with an ERC-20 quote need approval for that quote.
-
-### 7.4 SDK (does all of the above)
-
-```sh
-npm i viem github:pardotfamily/par-sdk
+Reverts:
+```
+SlippageExceeded(uint256 amountOut, uint256 minAmountOut)
+RouteBroken(uint256 index)
+RouteEndMismatch(address expected, address actual)
 ```
 
-```ts
-import { createPar, buildApprove } from "par-sdk";
-const par = createPar({ rpcUrl });                          // any Robinhood Chain RPC
+Approvals: token -> router for sells. ERC20 quote -> router for buyWithQuote / swapExactIn with ERC20 in. None for ETH in.
 
-const t = await par.getTradable(token);                     // null if not a par token; { kind: "single"|"multi", markets[], router }
-const meta = await par.getTokenMetadata(token);
-const buy  = await par.buildBuy(t, ethIn, recipient, 100);  // { to, data, value, expectedOut }, 1% slippage, all markets
-const sell = await par.buildSell(t, tokensIn, recipient, 100);
-const out  = await par.quoteBuy(t, ethIn);                  // simulation only
-const launches = await par.getLaunches(fromBlock, toBlock); // both factories
-par.watchLaunches(cb); par.watchTrades(launch, cb);
-```
+## 8. Indexer API
 
-Everything lower-level is exported (`poolKeyFor`, `poolIdOf`, `readSpotPriceX18`, `parseTradeLogs`, all ABIs, `ParIndexer`). Current version 0.2.1.
-
-## 8. Fees (for display)
-
-- Pool LP fee = `poolFee` (1% base + creator tax). That is the only fee on a trade; the protocol takes nothing from integrators, and you can add your own fee in your router.
-- Of the 1% base: half to the creator, half to the protocol. Creator tax goes entirely to the creator. Fees accrue in the locked position and are collected by a keeper (`FeesCollected` on the lockers); the creator claims from `PairPadFeeEscrow`.
-- The protocol's share paid **in the launch token is burned** on every collection (`ProtocolShareBurned`). The protocol's share paid **in the quote** (for launches since the splitter went live) goes 80% to buying back and burning $par.
-- A launch may opt in to **fees to holders** at creation: its `creatorFeeRecipient` is the `PairPadHolderVault`, and the creator share is bought back into the token and sent to holders pro rata every hour (`Dispersed` events on `PairPadDisperse`). The indexer exposes this as `feesToHolders: true`.
-
-## 9. Indexer API
-
-Base URL `https://api.par.family`. Public, no key, CORS open, gzip. Please send an identifying `User-Agent`; if you need sustained high request rates tell us and we will provision for it. A trade is queryable about a second after it is mined.
+Base https://api.par.family. GET only. CORS open. gzip. Send a User-Agent. Tell us if you need high sustained rates. Trades are queryable about 1 s after the block.
 
 ```
-GET /health                       -> { ok, head, indexed, lagBlocks, ... }
-GET /launches?orderBy=createdAt&orderDirection=desc&limit=100
-    orderBy   createdAt | lastTradeAt | tradeCount | totalVolumeQuote | marketCap | recentVolume
-    filters   deployer=0x.. | token_in=0x..,0x.. | feesToHolders=1 | q=<name, symbol or address search>
-    paging    limit ≤ 500, offset=N (≤ 10000); for a full sync walk orderBy=createdAt&orderDirection=asc
-GET /launches/count               -> { launched }
-GET /launches/:token              -> one row (404 if not a par token)
-GET /trades?token=0x..&limit=200[&wallet=0x..]
-GET /candles?token=0x..&interval=5m&limit=300[&before=<unix>]
+/health                                   { ok, head, indexed, lagBlocks, ... }
+/launches?orderBy=createdAt&orderDirection=desc&limit=100&offset=0
+    orderBy         createdAt | lastTradeAt | tradeCount | totalVolumeQuote | marketCap | recentVolume
+    orderDirection  asc | desc
+    limit           1..500
+    offset          0..10000
+    deployer=0x..   token_in=0x..,0x..   feesToHolders=1   q=<name|symbol|address>
+/launches/count                           { launched }
+/launches/:token                          one row, 404 if not par
+/trades?token=0x..&limit=200[&wallet=0x..]
+/candles?token=0x..&interval=5m&limit=300[&before=<unix>]
     interval 1m | 5m | 15m | 1h | 4h | 1d
-    -> { candles: [{ time, open, high, low, close, openEth, highEth, lowEth, closeEth, volumeQuote, trades }] }
-GET /holders?token=0x..&limit=100
-GET /positions?owner=0x..         -> every par token a wallet holds, with cost basis
-GET /fees?token=0x..              -> fee collections
-GET /distributions?token=0x..     -> holder-reward rounds
-GET /rewards?owner=0x..[&token=]  -> what a wallet received from holder rewards
-GET /buybacks                     -> $par bought back and burned
-GET /stats                        -> platform totals (launches, holders, trades, volumeEth, ...)
-GET /events                       -> text/event-stream
-GET https://par.family/tokenlist.json
+    { candles: [{ time, open, high, low, close, openEth, highEth, lowEth, closeEth, volumeQuote, trades }] }
+    open..close = quote units per 1e18 token. *Eth = same in ETH. Use *Eth for multi tokens.
+/holders?token=0x..&limit=100
+/positions?owner=0x..
+/fees?token=0x..
+/distributions?token=0x..
+/rewards?owner=0x..[&token=0x..]
+/buybacks
+/stats
+/events                                   text/event-stream, one "batch" event per indexed block range
+https://par.family/tokenlist.json
 ```
 
-Conventions: `uint256` values are **decimal strings in raw units**, timestamps are unix seconds, addresses are lowercase, ETH prices are floats (`lastPriceEth` = ETH per whole token).
+Types: uint256 as decimal string in raw units. Timestamps unix seconds. Addresses lowercase. lastPriceEth, priceEth, totalVolumeEth as floats.
 
-Launch row (single-market):
-
-```json
-{
-  "launchpad": "par", "factory": "0x9d33…", "locker": "0x8a6d…",
-  "token": "0x…", "poolId": "0x…", "poolFee": 10000, "tickSpacing": 10, "marketCount": 1,
-  "deployer": "0x…", "creatorFeeRecipient": "0x…", "feesToHolders": false,
-  "name": "…", "symbol": "…", "decimals": 18,
-  "logo": "ipfs://bafk…", "logoUrl": "https://ipfs.io/ipfs/bafk…", "description": "…",
-  "socials": { "twitter": null, "telegram": null, "discord": null, "website": "https://par.family/t/…", "farcaster": null },
-  "pairToken": "0x0000000000000000000000000000000000000000", "quoteSymbol": "ETH", "quoteDecimals": 18,
-  "quoteRisk": "native",                       // native | verified | wild  (how well-known the quote asset is)
-  "supply": "1000000000000000000000000000",
-  "baseFeeBps": 100, "creatorTaxBps": 0, "protocolFeeShareBps": 5000,
-  "quoteRaised": "…", "tokensOnCurve": "…",   // pool inventory
-  "totalVolumeQuote": "…", "totalVolumeEth": 0.31, "tradeCount": 14,
-  "lastPriceQuoteX18": "1610000000", "lastPriceEth": 1.61e-9,   // quote units per 1e18 token; ETH per token
-  "creatorFeesQuote": "…", "creatorFeesToken": "…", "burnedToken": "…",
-  "createdAt": 1788308427, "createdBlock": 53116667, "lastTradeAt": 1788309901,
-  "launchTx": "0x…", "positionId": "1590997"
-}
+Launch row:
 ```
-
-Multi-market rows add `"marketCount": n` and `"markets": [{ index, poolId, pairToken, quoteSymbol, quoteDecimals, quoteRisk, quoteRaised, tokensOnCurve, totalVolumeQuote, tradeCount, lastPriceQuoteX18, lastPriceEth, lastTradeAt, … }]`; the top-level quote fields mirror `markets[0]`, and `lastPriceEth` / `totalVolumeEth` / `tradeCount` are across all markets. Use the `*Eth` candle fields for multi-market charts (their trades happen in several quotes).
+launchpad, factory, locker
+token, poolId, poolFee, tickSpacing, marketCount
+deployer, creatorFeeRecipient, feesToHolders
+name, symbol, decimals, logo (ipfs://), logoUrl (https), description
+socials { twitter, telegram, discord, website, farcaster }
+pairToken, quoteSymbol, quoteDecimals, quoteRisk (native | verified | wild)
+supply, baseFeeBps, creatorTaxBps, protocolFeeShareBps
+quoteRaised, tokensOnCurve
+totalVolumeQuote, totalVolumeEth, tradeCount
+lastPriceQuoteX18 (quote units per 1e18 token), lastPriceEth (ETH per token)
+creatorFeesQuote, creatorFeesToken, creatorCollectedQuote, creatorCollectedToken, burnedToken
+createdAt, createdBlock, lastTradeAt, launchTx, positionId
+markets[]   only when marketCount > 1: { index, poolId, pairToken, quoteSymbol, quoteDecimals, quoteRisk, phantomQuote, positionId, quoteRaised, tokensOnCurve, totalVolumeQuote, tradeCount, creatorFeesQuote, creatorFeesToken, lastPriceQuoteX18, lastPriceEth, lastTradeAt }
+```
+Multi rows: top level quote fields mirror markets[0]. lastPriceEth, totalVolumeEth, tradeCount are across all markets.
 
 Trade row:
-
-```json
-{ "txHash": "0x…", "token": "0x…", "trader": "0x…", "sender": "0x…(router)", "isBuy": true,
-  "quoteAmount": "…", "tokenAmount": "…", "fee": "…", "priceQuoteX18": "…", "priceEth": 5.04e-8,
-  "timestamp": 1788727309, "blockNumber": 56271195, "logIndex": 9, "market": null }
+```
+txHash, token, trader (tx.from), sender (router), isBuy
+quoteAmount, tokenAmount, fee, priceQuoteX18, priceEth
+timestamp, blockNumber, logIndex
+market   index for multi tokens, null for single. Multi rows also carry pairToken, quoteSymbol, quoteDecimals of that market.
 ```
 
-## 10. Edge cases worth knowing
+## 9. Fees
 
-- **Quote assets other than ETH.** ~half of the launches are quoted in USDG, WETH, tokenised stocks or other tokens. If you only support ETH pairs, `pairToken == 0x0` filters them; otherwise route through the quote (§7.3) or show the price in the quote.
-- **Multi-market tokens** have one address and several `poolId`s. Aggregate volume/trades across pools; charts should use ETH-denominated prices.
-- **Creator tax up to 10%** is part of `poolFee`; display it, since it changes the effective spread.
-- **Same supply everywhere**: market cap is `price × 1e9`, and `burnedToken` (tokens sent to `address(0)`) reduces circulating supply.
-- **Public RPC limits**: ≤10k-block `eth_getLogs`, no batching. For production use your own node or a provider; the indexer is the fastest bootstrap.
-- **No hook, no admin keys on pools**: there is nothing that can pause, blacklist, or change a pool's fee after launch.
+Trade fee = poolFee, LP fee of the pool. Nothing else is charged. par takes no integrator fee. Add your own in your router if you want.
+baseFeeBps 100 split 50/50 creator/protocol. creatorTaxBps 100% to creator. Collected from the locked position by a keeper (FeesCollected on the locker), creator claims from PairPadFeeEscrow.
+Protocol share in token is burned (ProtocolShareBurned). Protocol share in quote goes 80% to buy and burn $par for launches with protocolFeeRecipient = PairPadFeeSplitter.
+feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator share is bought back into the token and sent to holders pro rata (Dispersed on PairPadDisperse).
 
-## 11. Checklist
+## 10. Notes
 
-1. Subscribe to `TokenLaunched` on both factories (or poll `/launches`).
-2. On each launch: read metadata from the token, derive pool key(s) and `poolId`(s).
-3. Charts/trades: `Swap` on the PoolManager filtered by `poolId` (or `/trades`, `/candles`).
-4. Trading: your v4 routing with the pool key, or par routers for ETH in/out and multi-market.
-5. Show `poolFee` as the trade fee; no integrator fee is taken by par.
-6. Test tokens: `$par` `0x507B6F349a80114097A67B8b4677367acC15b220` (ETH-quoted, single); any row with `marketCount > 1` from `/launches` for multi-market.
+- About half of the launches are not ETH quoted. pairToken == address(0) filters ETH pairs. Others: route via section 7b or price in quote.
+- Multi tokens: one address, several poolIds. Sum volume and trades across pools. Chart in ETH.
+- creatorTaxBps up to 1000 is inside poolFee. Show it.
+- burnedToken = tokens sent to address(0), reduces circulating supply.
+- No hook, no admin on pools. Nothing can pause, blacklist or change a pool fee after launch.
+- Public RPC: 10000 block eth_getLogs, no batching, retries needed. Use own node or provider in production.
+
+## 11. Order of work
+
+1. Watch TokenLaunched on both factories (or poll /launches).
+2. Per launch: read metadata from the token, build PoolKey(s), compute poolId(s).
+3. Charts and trades: Swap on PoolManager filtered by poolId, or /trades and /candles.
+4. Trading: own v4 routing with the PoolKey, or PairPadRouter / PairPadMultiRouter.
+5. Show poolFee as the trade fee.
+6. Test with $par 0x507B6F349a80114097A67B8b4677367acC15b220 and any row with marketCount > 1.
