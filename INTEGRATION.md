@@ -174,6 +174,7 @@ Explorer https://robinhoodchain.blockscout.com
 Indexer https://api.par.family
 
 PoolManager (Uniswap v4)      0x8366a39CC670B4001A1121B8F6A443A643e40951
+PositionManager (Uniswap v4)  0x58daec3116aae6D93017bAAea7749052E8a04fA7
 
 PairPadLaunchFactory          0x9d33Ba78389c8772bC114Cba47Dc1985E933e76F   deployed at block 53890474
 PairPadRouter                 0x73d84bdbB1983Fa7eD8FCBcE40bc308997cEd120
@@ -278,7 +279,7 @@ Divide by 10^quoteDecimals for a human price. Market cap = price * 1e9 (same sup
 
 Multi: price each pool, weight by tokens remaining in each pool, or take lastPriceEth from the indexer.
 
-Liquidity: one locked position per pool from opening price to max tick. Cannot be removed. Inventory: tokensOnCurve and quoteRaised on the indexer row.
+Liquidity: one position per pool from opening price to max tick, minted through PositionManager and held as an NFT by PairPadLocker (single) or PairPadMultiLocker (multi). The locker has no withdraw or arbitrary call function; the only position action it encodes is a zero liquidity decrease to collect fees. Cannot be removed by anyone. Inventory: tokensOnCurve and quoteRaised on the indexer row.
 
 ## A6. Trades (read)
 
@@ -428,4 +429,5 @@ feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator shar
 - creatorTaxBps up to 1000 is inside poolFee. Show it.
 - burnedToken = tokens sent to address(0), reduces circulating supply.
 - No hook, no admin on pools. Nothing can pause, blacklist or change a pool fee after launch.
+- LP lock: the position NFT is not burned and not in a third party locker, it is owned by our own locker contract. Generic checks (LP burned, Team Finance, Unicrypt, etc) will show it as unlocked. Treat PositionManager.ownerOf(positionId) == PairPadLocker or PairPadMultiLocker as locked forever. positionId is in getLaunchedToken / getMarkets and on the indexer row (positionId, markets[].positionId). Locker source: contracts/src/v2/PairPadLaunchLocker.sol, contracts/src/v3/PairPadMultiLaunchLocker.sol.
 - Public RPC: 10000 block eth_getLogs, no batching, retries needed. Use own node or provider in production.
