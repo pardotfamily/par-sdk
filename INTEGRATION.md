@@ -1,12 +1,5 @@
 # par integration
 
-Chain: Robinhood Chain, chain id 4663, Arbitrum Orbit L2.
-RPC: https://rpc.mainnet.chain.robinhood.com (public, rate limited, eth_getLogs max 10000 blocks per call, no JSON-RPC batching)
-Explorer: https://robinhoodchain.blockscout.com
-Indexer: https://api.par.family (public, no key)
-Contracts source: https://github.com/pardotfamily/par
-Contact: X @pardotfamily, CET
-
 ## Model
 
 Every par token is a plain ERC20 with fixed supply 1e27 (1,000,000,000 * 1e18), 18 decimals, no mint, no owner, no transfer hooks.
@@ -156,7 +149,7 @@ Row shapes: appendix A8. Amounts are decimal strings in raw units, timestamps un
 
 ### 9. Display
 
-Trade fee to show = t.poolFee / 10000 percent (1% base plus creator tax, 0 to 10%). par takes no integrator fee; add your own in your router if you want.
+Trade fee to show = t.poolFee / 10000 percent (1% base plus creator tax, 0 to 10%). No protocol fee on top for integrators.
 Badge feesToHolders when creatorFeeRecipient equals ADDRESSES.holderVault (indexer rows carry the flag).
 Multi tokens: one address, several pools. Sum volume and trades across markets. Chart in ETH (candles' *Eth fields).
 
@@ -172,9 +165,14 @@ Multi tokens: one address, several pools. Sum volume and trades across markets. 
 
 For own v4 routing, other languages, or checking what the SDK does.
 
-## A1. Addresses
+## A1. Chain and addresses
 
 ```
+Chain id 4663, Robinhood Chain (Arbitrum Orbit L2)
+RPC https://rpc.mainnet.chain.robinhood.com   public, rate limited, eth_getLogs max 10000 blocks, no JSON-RPC batching
+Explorer https://robinhoodchain.blockscout.com
+Indexer https://api.par.family
+
 PoolManager (Uniswap v4)      0x8366a39CC670B4001A1121B8F6A443A643e40951
 
 PairPadLaunchFactory          0x9d33Ba78389c8772bC114Cba47Dc1985E933e76F   deployed at block 53890474
@@ -418,7 +416,7 @@ market   index for multi tokens, null for single. Multi rows also carry pairToke
 
 ## A9. Fees
 
-Trade fee = poolFee, LP fee of the pool. Nothing else is charged. par takes no integrator fee. Add your own in your router if you want.
+Trade fee = poolFee, LP fee of the pool. Nothing else is charged. No protocol fee on top for integrators.
 baseFeeBps 100 split 50/50 creator/protocol. creatorTaxBps 100% to creator. Collected from the locked position by a keeper (FeesCollected on the locker), creator claims from PairPadFeeEscrow.
 Protocol share in token is burned (ProtocolShareBurned). Protocol share in quote goes 80% to buy and burn $par for launches with protocolFeeRecipient = PairPadFeeSplitter.
 feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator share is bought back into the token and sent to holders pro rata (Dispersed on PairPadDisperse).
