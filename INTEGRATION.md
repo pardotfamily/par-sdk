@@ -168,7 +168,7 @@ For own v4 routing, other languages, or checking what the SDK does.
 ## A1. Chain and addresses
 
 ```
-Chain id 4663, Robinhood Chain (Arbitrum Orbit L2)
+Chain id 4663, Robinhood Chain (Arbitrum Orbit L2), 100 ms blocks (10000 blocks = about 17 min)
 RPC https://rpc.mainnet.chain.robinhood.com   public, rate limited, eth_getLogs max 10000 blocks, no JSON-RPC batching
 Explorer https://robinhoodchain.blockscout.com
 Indexer https://api.par.family
@@ -346,7 +346,7 @@ function priceEthAmountInQuote(address quoteToken, uint256 ethAmount) view retur
 function isPriceable(address quoteToken) view returns (bool);
 ```
 
-Quoting: eth_call the same function, apply slippage to the returned amount, send with that as min.
+Quoting: eth_call the same function, apply slippage to the returned amount, send with that as min. Sell quotes: eth_call sellToEth from an address that has no balance or allowance reverts. Use eth_call state override on the token's balance and allowance slots (what the SDK does) or call from the holder's address.
 
 Reverts:
 ```
@@ -428,6 +428,7 @@ feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator shar
 - Multi tokens: one address, several poolIds. Sum volume and trades across pools. Chart in ETH.
 - creatorTaxBps up to 1000 is inside poolFee. Show it.
 - burnedToken = tokens sent to address(0), reduces circulating supply.
+- Dev buy: no pre allocation, no team tokens, 100% of supply is in the pool at launch. A creator can buy in the launch tx through the router (launchAndBuyWithEth / launchAndBuyWithQuote). Detect: Swap in the launch tx with tx.from == deployer. The indexer trades for that tx carry trader == deployer.
 - No hook, no admin on pools. Nothing can pause, blacklist or change a pool fee after launch.
 - LP lock: the position NFT is not burned and not in a third party locker, it is owned by our own locker contract. Generic checks (LP burned, Team Finance, Unicrypt, etc) will show it as unlocked. Treat PositionManager.ownerOf(positionId) == PairPadLocker or PairPadMultiLocker as locked forever. positionId is in getLaunchedToken / getMarkets and on the indexer row (positionId, markets[].positionId). Locker source: contracts/src/v2/PairPadLaunchLocker.sol, contracts/src/v3/PairPadMultiLaunchLocker.sol.
 - Public RPC: 10000 block eth_getLogs, no batching, retries needed. Use own node or provider in production.
