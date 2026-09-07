@@ -186,7 +186,8 @@ PairPadMultiLocker            0x5826FBB6201DaAcD924A3d292841DA9142952D59
 
 PairPadFeeEscrow              0x1C27e8F0c2a754DB23ab1608fA09c068D54d4386
 PairPadQuotePricer            0x9EfC6EFA4c5F31e2BEC6CC174Ba7bB8f0b57d563
-PairPadFeeSplitter            0x913A93cc2676F49454173323B85762b3e5906c43
+PairPadFeeSplitter            0x85a1CbbE2933F15f2599B9E0e03e6F89655fa4C1
+PairPadFeeSplitter v1         0x913A93cc2676F49454173323B85762b3e5906c43   (launches made under it keep paying it)
 PairPadHolderVault            0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C
 PairPadDisperse               0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC
 
@@ -419,7 +420,7 @@ market   index for multi tokens, null for single. Multi rows also carry pairToke
 
 Trade fee = poolFee, LP fee of the pool. Nothing else is charged. No protocol fee on top for integrators.
 baseFeeBps 100 split 50/50 creator/protocol. creatorTaxBps 100% to creator. Collected from the locked position by a keeper (FeesCollected on the locker), creator claims from PairPadFeeEscrow.
-Protocol share in token is burned (ProtocolShareBurned). Protocol share in quote goes 80% to buy and burn $par for launches with protocolFeeRecipient = PairPadFeeSplitter.
+Protocol share in token is burned (ProtocolShareBurned). Protocol share in quote goes buybackBps() of the splitter (6000 on current, 8000 on v1) to buy and burn $par for launches with protocolFeeRecipient = a PairPadFeeSplitter.
 feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator share is bought back into the token and sent to holders pro rata (Dispersed on PairPadDisperse).
 
 ## A10. Notes

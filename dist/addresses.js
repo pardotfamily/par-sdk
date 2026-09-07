@@ -12,10 +12,12 @@ export const ADDRESSES = {
     feeEscrow: "0x1C27e8F0c2a754DB23ab1608fA09c068D54d4386",
     quotePricer: "0x9EfC6EFA4c5F31e2BEC6CC174Ba7bB8f0b57d563",
     // Fee routing. The splitter is the protocol fee recipient of launches since
-    // it was set (80% of protocol quote fees buy and burn $par); the holder vault
-    // is the creator fee recipient of "fees to holders" launches; Disperse emits
-    // the holder-rewards rounds.
-    feeSplitter: "0x913A93cc2676F49454173323B85762b3e5906c43",
+    // it was set (its buybackBps, 60%, of protocol quote fees buy and burn $par;
+    // the first splitter, 80%, still receives from the launches made under it);
+    // the holder vault is the creator fee recipient of "fees to holders"
+    // launches; Disperse emits the holder-rewards rounds.
+    feeSplitter: "0x85a1CbbE2933F15f2599B9E0e03e6F89655fa4C1",
+    feeSplitterV1: "0x913A93cc2676F49454173323B85762b3e5906c43",
     holderVault: "0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C",
     disperse: "0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC",
     buybackWallet: "0x5bA4a4A197111CE8B6a2C2776D7836A9E1868033",
