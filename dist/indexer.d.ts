@@ -18,6 +18,7 @@ export type IndexedMarket = {
     creatorCollectedQuote: string;
     creatorCollectedToken: string;
     tradeCount: number;
+    /** Raw quote units per whole token; a decimal string that may carry fractional digits. Parse as a float. */
     lastPriceQuoteX18: string | null;
     lastPriceEth: number | null;
     quotePricedAt: number | null;
@@ -58,6 +59,7 @@ export type IndexedLaunch = {
     /** The creator gave the creator share of fees to the holders (recipient is the holder vault). Permanent. */
     feesToHolders?: boolean;
     tradeCount: number;
+    /** Raw quote units per whole token; a decimal string that may carry fractional digits. Parse as a float. */
     lastPriceQuoteX18: string | null;
     lastPriceEth: number | null;
     lastPriceEthStale?: boolean;
@@ -92,6 +94,7 @@ export type IndexedTrade = {
     tokenAmount: string;
     /** LP fee on the trade, in the input asset: quote for a buy, token for a sell. */
     fee: string;
+    /** Raw quote units per whole token; a decimal string that may carry fractional digits. Parse as a float. */
     priceQuoteX18: string;
     priceEth: number | null;
     timestamp: number;

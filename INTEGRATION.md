@@ -413,6 +413,7 @@ Trade row:
 txHash, token, trader (tx.from), sender (router), isBuy
 quoteAmount, tokenAmount, fee, priceQuoteX18, priceEth
 timestamp, blockNumber, logIndex
+priceQuoteX18 (and lastPriceQuoteX18 on launch rows) = raw quote units per whole token, decimal string, may have up to 18 fractional digits (cbBTC quote: fraction of a satoshi per token). Parse as float, not as integer.
 market   index for multi tokens, null for single. Multi rows also carry pairToken, quoteSymbol, quoteDecimals of that market.
 ```
 
