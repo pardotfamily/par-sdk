@@ -21,6 +21,10 @@ export const ADDRESSES = {
   feeSplitter: "0x85a1CbbE2933F15f2599B9E0e03e6F89655fa4C1" as Address,
   feeSplitterV1: "0x913A93cc2676F49454173323B85762b3e5906c43" as Address,
   holderVault: "0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C" as Address,
+  // The burn vault is the creator fee recipient of "buyback & burn" launches:
+  // it buys the token in its own pool with the creator's quote share and burns
+  // that plus the token share. No owner; it can only buy in par pools or burn.
+  burnVault: "0x16c83D36539b6C92E6FC998D2a039fD7Ff31958E" as Address,
   disperse: "0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC" as Address,
   buybackWallet: "0x5bA4a4A197111CE8B6a2C2776D7836A9E1868033" as Address,
   holdersWallet: "0xB1a7a3A37F41e4dC9507F9B0F946B7F786c4AFb4" as Address,

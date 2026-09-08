@@ -68,6 +68,14 @@ export type IndexedLaunch = {
   burnedToken: string;
   /** The creator gave the creator share of fees to the holders (recipient is the holder vault). Permanent. */
   feesToHolders?: boolean;
+  /** The creator gave the creator share back to the token: bought back and burned (recipient is the burn vault). Permanent. */
+  feesBurned?: boolean;
+  /** Where the creator share goes: "creator" (a wallet), "holders" or "burn". */
+  feeMode?: "creator" | "holders" | "burn";
+  /** Of burnedToken, what the burn vault burned (creator fees of a "burn" launch). */
+  feeBurnedToken?: string;
+  /** Of burnedToken, what the creator fee recipient burned itself (the Burn button by the fee claim). */
+  creatorBurnedToken?: string;
   tradeCount: number;
   /** Raw quote units per whole token; a decimal string that may carry fractional digits. Parse as a float. */
   lastPriceQuoteX18: string | null;
@@ -184,6 +192,17 @@ export type Distributions = {
   /** Sum of every round, in token units. */
   total: string;
   items: Distribution[];
+};
+
+export type FeeBurn = { id: string; amount: string; txHash: string; timestamp: number };
+export type FeeBurns = {
+  token: Address;
+  vault: Address | null;
+  burns: number;
+  lastAt: number | null;
+  /** Everything the burn vault has burned for this token, raw units. */
+  total: string;
+  items: FeeBurn[];
 };
 export type Reward = { id: string; token: Address; amount: string; txHash: Hex; timestamp: number };
 export type Rewards = { owner: Address; total: string | null; items: Reward[] };
@@ -309,6 +328,11 @@ export class ParIndexer {
   /** Holder-rewards rounds of a "fees to holders" launch, newest first, with totals. */
   distributions(token: Address, limit?: number) {
     return this.get<Distributions>("/distributions", { token, limit });
+  }
+
+  /** Buyback & burn rounds of a "burn" launch (the burn vault's burns), newest first, with totals. */
+  burns(token: Address, limit?: number) {
+    return this.get<FeeBurns>("/burns", { token, limit });
   }
 
   /** What a wallet received from holder rewards; `token` narrows it (and fills `total`). */

@@ -109,6 +109,7 @@ Two things sit on top of that:
 
 - **Protocol buyback.** For launches whose `protocolFeeRecipient` is a splitter (`addresses.feeSplitter`, or `addresses.feeSplitterV1` for launches made under the first one), the splitter's `buybackBps` of the protocol's quote fees (60%, 80% on v1) buys $par and burns it, every hour. With the token side burned outright, 80% of what the protocol earns on these launches is burned or bought back. `indexer.buybacks()` has the totals and the burns.
 - **Fees to holders.** A launch may name `addresses.holderVault` as its creator fee recipient (`feesToHolders: true` on the indexer row, `?feesToHolders=1` filters). Its creator share is bought back into the token and sent to holders pro rata every hour through `addresses.disperse`. `indexer.distributions(token)` lists the rounds, `indexer.rewards(owner, token)` what a wallet got.
+- **Buyback & burn.** A launch may instead name `addresses.burnVault` as its creator fee recipient (`feesBurned: true`, `feeMode: "burn"`, `?feeMode=burn` filters). Its creator share buys the token back in its own pool every hour and is burned together with the share paid in the token. `indexer.burns(token)` lists the rounds; the row's `feeBurnedToken` is the running total. `feeMode` is `creator`, `holders` or `burn` on every row. On ordinary launches the creator can also burn the fee tokens it claimed from the token page; `creatorBurnedToken` is the running total of that.
 
 ## Trading a pool directly
 

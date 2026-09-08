@@ -150,7 +150,7 @@ Row shapes: appendix A8. Amounts are decimal strings in raw units, timestamps un
 ### 9. Display
 
 Trade fee to show = t.poolFee / 10000 percent (1% base plus creator tax, 0 to 10%). No protocol fee on top for integrators.
-Badge feesToHolders when creatorFeeRecipient equals ADDRESSES.holderVault (indexer rows carry the flag).
+Badge feesToHolders when creatorFeeRecipient equals ADDRESSES.holderVault, feesBurned when it equals ADDRESSES.burnVault (indexer rows carry both flags and feeMode = creator | holders | burn).
 Multi tokens: one address, several pools. Sum volume and trades across markets. Chart in ETH (candles' *Eth fields).
 
 ### 10. Order of work
@@ -189,6 +189,7 @@ PairPadQuotePricer            0x9EfC6EFA4c5F31e2BEC6CC174Ba7bB8f0b57d563
 PairPadFeeSplitter            0x85a1CbbE2933F15f2599B9E0e03e6F89655fa4C1
 PairPadFeeSplitter v1         0x913A93cc2676F49454173323B85762b3e5906c43   (launches made under it keep paying it)
 PairPadHolderVault            0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C
+PairPadBurnVault              0x16c83D36539b6C92E6FC998D2a039fD7Ff31958E
 PairPadDisperse               0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC
 
 WETH                          0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73
@@ -369,7 +370,7 @@ Base https://api.par.family. GET only. CORS open. gzip. Send a User-Agent. Tell 
     orderDirection  asc | desc
     limit           1..500
     offset          0..10000
-    deployer=0x..   token_in=0x..,0x..   feesToHolders=1   q=<name|symbol|address>
+    deployer=0x..   token_in=0x..,0x..   feesToHolders=1   feeMode=creator|holders|burn   q=<name|symbol|address>
 /launches/count                           { launched }
 /launches/:token                          one row, 404 if not par
 /trades?token=0x..&limit=200[&wallet=0x..]
@@ -382,6 +383,7 @@ Base https://api.par.family. GET only. CORS open. gzip. Send a User-Agent. Tell 
 /fees?token=0x..
 /distributions?token=0x..
 /rewards?owner=0x..[&token=0x..]
+/burns?token=0x..
 /buybacks
 /stats
 /events                                   text/event-stream, one "batch" event per indexed block range
@@ -394,7 +396,7 @@ Launch row:
 ```
 launchpad, factory, locker
 token, poolId, poolFee, tickSpacing, marketCount
-deployer, creatorFeeRecipient, feesToHolders
+deployer, creatorFeeRecipient, feesToHolders, feesBurned, feeMode, feeBurnedToken
 name, symbol, decimals, logo (ipfs://), logoUrl (https), description
 socials { twitter, telegram, discord, website, farcaster }
 pairToken, quoteSymbol, quoteDecimals, quoteRisk (native | verified | wild)
@@ -402,7 +404,7 @@ supply, baseFeeBps, creatorTaxBps, protocolFeeShareBps
 quoteRaised, tokensOnCurve
 totalVolumeQuote, totalVolumeEth, tradeCount
 lastPriceQuoteX18 (quote units per 1e18 token), lastPriceEth (ETH per token)
-creatorFeesQuote, creatorFeesToken, creatorCollectedQuote, creatorCollectedToken, burnedToken
+creatorFeesQuote, creatorFeesToken, creatorCollectedQuote, creatorCollectedToken, burnedToken, creatorBurnedToken
 createdAt, createdBlock, lastTradeAt, launchTx, positionId
 markets[]   only when marketCount > 1: { index, poolId, pairToken, quoteSymbol, quoteDecimals, quoteRisk, phantomQuote, positionId, quoteRaised, tokensOnCurve, totalVolumeQuote, tradeCount, creatorFeesQuote, creatorFeesToken, lastPriceQuoteX18, lastPriceEth, lastTradeAt }
 ```
@@ -423,6 +425,7 @@ Trade fee = poolFee, LP fee of the pool. Nothing else is charged. No protocol fe
 baseFeeBps 100 split 50/50 creator/protocol. creatorTaxBps 100% to creator. Collected from the locked position by a keeper (FeesCollected on the locker), creator claims from PairPadFeeEscrow.
 Protocol share in token is burned (ProtocolShareBurned). Protocol share in quote goes buybackBps() of the splitter (6000 on current, 8000 on v1) to buy and burn $par for launches with protocolFeeRecipient = a PairPadFeeSplitter.
 feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator share is bought back into the token and sent to holders pro rata (Dispersed on PairPadDisperse).
+feesBurned = true when creatorFeeRecipient = PairPadBurnVault. Creator share is bought back into the token in its own pool and burned with the token share (BoughtBack, Burned on the vault; Transfer to address zero from the vault). GET /burns?token=0x.. lists the rounds. The vault's buys are ordinary Swap events on the PoolManager from the vault address.
 
 ## A10. Notes
 
