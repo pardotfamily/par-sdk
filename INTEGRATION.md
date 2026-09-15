@@ -446,8 +446,10 @@ feesFloor = true when creatorFeeRecipient = PairPadFloorVault. Creator share in 
 par runs on Arc as a separate deployment of the same contracts (multi-market stack only). Everything above applies, with these differences:
 
 ```
-Arc mainnet   chain id 5042      addresses published here and in src/addresses.ts (ADDRESSES_ARC) right after the mainnet deploy
-Arc testnet   chain id 5042002   RPC https://rpc.testnet.arc.io   Explorer https://testnet.arcscan.app
+Arc mainnet   chain id 5042      App https://arc.par.family           Indexer https://api-arc.par.family           (live after the mainnet deploy; addresses published here and in src/addresses.ts, ADDRESSES_ARC)
+Arc testnet   chain id 5042002   App https://arc-testnet.par.family   Indexer https://api-arc-testnet.par.family   RPC https://rpc.testnet.arc.io   Explorer https://testnet.arcscan.app
+
+Token page: <app>/token/<address>. Indexer: same API as A8, same row shape; amounts in *Eth fields and quoteRaised etc. are in USDC (6 decimals where raw).
 
 Testnet (deployed 2026-09-14, same code as mainnet):
 PairPadMultiLaunchFactory     0x920Ca489f8c9573645b8aB00dad60fc81c9487fd
@@ -471,5 +473,5 @@ Mainnet Uniswap v4 is canonical: PoolManager 0x8366a39CC670B4001A1121B8F6A443A64
 - No payable entry points. `buyWithEth`, `sellToEth`, `launchAndBuyWithEth` are replaced by `buyWithReference(token, legs, amountIn, minTokensOut, recipient)`, `sellToReference(token, legs, minOut, recipient)`, `launchAndBuyWithReference(...)` on PairPadMultiRouter, after `approve(router, amountIn)` on USDC. Same `Leg[]` shape as A7b. `factory.nativeIsReference()` returns false on Arc, true on Robinhood Chain, so one code path can branch on it.
 - ABIs of the Arc build: `abi/arc/` in this repo (superset of the Robinhood Chain ABIs).
 - Fees, fee modes, locker, pool fee, launch flow, events (`TokenLaunched`, `Swap`, `FeesCollected`, `WallMoved`, `Dispersed`): identical.
-- Indexer API and token pages for Arc get their own host, published together with the mainnet addresses. Until then read launches from the factory (A2) and trades from the PoolManager (A6).
+- Hosts follow one scheme per chain: `<chain>.par.family` for the app, `api-<chain>.par.family` for the indexer, `-testnet` suffix for testnets. The testnet pair is live now, the mainnet pair goes live with the deploy; config against both today and switch the base URL on launch day.
 - Testnet only: Uniswap is a fork (UnitFlow) with a v1-style V3 SwapRouter, so router hops through V3 (non-USDC quotes) do not work there; USDC quoted markets work fully. Mainnet uses canonical Uniswap and has no such limit.
