@@ -1,0 +1,1166 @@
+[
+ {
+  "type": "constructor",
+  "inputs": [
+   {
+    "name": "manager_",
+    "type": "address",
+    "internalType": "contract IPoolManager"
+   },
+   {
+    "name": "factory_",
+    "type": "address",
+    "internalType": "contract PairPadMultiLaunchFactory"
+   },
+   {
+    "name": "swapRouter_",
+    "type": "address",
+    "internalType": "contract ISwapRouter02"
+   },
+   {
+    "name": "weth_",
+    "type": "address",
+    "internalType": "contract IWETH9"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "receive",
+  "stateMutability": "payable"
+ },
+ {
+  "type": "function",
+  "name": "buyWithEth",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct PairPadMultiRouter.Leg[]",
+    "components": [
+     {
+      "name": "market",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "hops",
+      "type": "tuple[]",
+      "internalType": "struct Hop[]",
+      "components": [
+       {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+         {
+          "name": "currency0",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "currency1",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+         },
+         {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+         },
+         {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "contract IHooks"
+         }
+        ]
+       },
+       {
+        "name": "v3",
+        "type": "bool",
+        "internalType": "bool"
+       }
+      ]
+     },
+     {
+      "name": "amountIn",
+      "type": "uint256",
+      "internalType": "uint256"
+     }
+    ]
+   },
+   {
+    "name": "minTokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "recipient",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "payable"
+ },
+ {
+  "type": "function",
+  "name": "buyWithQuote",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "market",
+    "type": "uint8",
+    "internalType": "uint8"
+   },
+   {
+    "name": "quoteIn",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "minTokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "recipient",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "payable"
+ },
+ {
+  "type": "function",
+  "name": "buyWithReference",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct PairPadMultiRouter.Leg[]",
+    "components": [
+     {
+      "name": "market",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "hops",
+      "type": "tuple[]",
+      "internalType": "struct Hop[]",
+      "components": [
+       {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+         {
+          "name": "currency0",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "currency1",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+         },
+         {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+         },
+         {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "contract IHooks"
+         }
+        ]
+       },
+       {
+        "name": "v3",
+        "type": "bool",
+        "internalType": "bool"
+       }
+      ]
+     },
+     {
+      "name": "amountIn",
+      "type": "uint256",
+      "internalType": "uint256"
+     }
+    ]
+   },
+   {
+    "name": "amountIn",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "minTokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "recipient",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "factory",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract PairPadMultiLaunchFactory"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "launchAndBuyWithEth",
+  "inputs": [
+   {
+    "name": "params",
+    "type": "tuple",
+    "internalType": "struct PairPadMultiLaunchFactory.TokenParams",
+    "components": [
+     {
+      "name": "name",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "symbol",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "logo",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "description",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "socials",
+      "type": "tuple",
+      "internalType": "struct PairPadLauncherToken.Socials",
+      "components": [
+       {
+        "name": "twitter",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "telegram",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "discord",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "website",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "farcaster",
+        "type": "string",
+        "internalType": "string"
+       }
+      ]
+     },
+     {
+      "name": "creatorFeeRecipient",
+      "type": "address",
+      "internalType": "address"
+     },
+     {
+      "name": "creatorTaxBps",
+      "type": "uint16",
+      "internalType": "uint16"
+     },
+     {
+      "name": "expectedEconomics",
+      "type": "bytes32",
+      "internalType": "bytes32"
+     },
+     {
+      "name": "salt",
+      "type": "bytes32",
+      "internalType": "bytes32"
+     }
+    ]
+   },
+   {
+    "name": "launchConfigId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "pairTokens",
+    "type": "address[]",
+    "internalType": "address[]"
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct PairPadMultiRouter.Leg[]",
+    "components": [
+     {
+      "name": "market",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "hops",
+      "type": "tuple[]",
+      "internalType": "struct Hop[]",
+      "components": [
+       {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+         {
+          "name": "currency0",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "currency1",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+         },
+         {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+         },
+         {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "contract IHooks"
+         }
+        ]
+       },
+       {
+        "name": "v3",
+        "type": "bool",
+        "internalType": "bool"
+       }
+      ]
+     },
+     {
+      "name": "amountIn",
+      "type": "uint256",
+      "internalType": "uint256"
+     }
+    ]
+   },
+   {
+    "name": "minTokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "payable"
+ },
+ {
+  "type": "function",
+  "name": "launchAndBuyWithReference",
+  "inputs": [
+   {
+    "name": "params",
+    "type": "tuple",
+    "internalType": "struct PairPadMultiLaunchFactory.TokenParams",
+    "components": [
+     {
+      "name": "name",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "symbol",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "logo",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "description",
+      "type": "string",
+      "internalType": "string"
+     },
+     {
+      "name": "socials",
+      "type": "tuple",
+      "internalType": "struct PairPadLauncherToken.Socials",
+      "components": [
+       {
+        "name": "twitter",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "telegram",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "discord",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "website",
+        "type": "string",
+        "internalType": "string"
+       },
+       {
+        "name": "farcaster",
+        "type": "string",
+        "internalType": "string"
+       }
+      ]
+     },
+     {
+      "name": "creatorFeeRecipient",
+      "type": "address",
+      "internalType": "address"
+     },
+     {
+      "name": "creatorTaxBps",
+      "type": "uint16",
+      "internalType": "uint16"
+     },
+     {
+      "name": "expectedEconomics",
+      "type": "bytes32",
+      "internalType": "bytes32"
+     },
+     {
+      "name": "salt",
+      "type": "bytes32",
+      "internalType": "bytes32"
+     }
+    ]
+   },
+   {
+    "name": "launchConfigId",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "pairTokens",
+    "type": "address[]",
+    "internalType": "address[]"
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct PairPadMultiRouter.Leg[]",
+    "components": [
+     {
+      "name": "market",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "hops",
+      "type": "tuple[]",
+      "internalType": "struct Hop[]",
+      "components": [
+       {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+         {
+          "name": "currency0",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "currency1",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+         },
+         {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+         },
+         {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "contract IHooks"
+         }
+        ]
+       },
+       {
+        "name": "v3",
+        "type": "bool",
+        "internalType": "bool"
+       }
+      ]
+     },
+     {
+      "name": "amountIn",
+      "type": "uint256",
+      "internalType": "uint256"
+     }
+    ]
+   },
+   {
+    "name": "amountIn",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "minTokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "payable"
+ },
+ {
+  "type": "function",
+  "name": "manager",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract IPoolManager"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "nativeIsReference",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bool",
+    "internalType": "bool"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "sellToEth",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct PairPadMultiRouter.Leg[]",
+    "components": [
+     {
+      "name": "market",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "hops",
+      "type": "tuple[]",
+      "internalType": "struct Hop[]",
+      "components": [
+       {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+         {
+          "name": "currency0",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "currency1",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+         },
+         {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+         },
+         {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "contract IHooks"
+         }
+        ]
+       },
+       {
+        "name": "v3",
+        "type": "bool",
+        "internalType": "bool"
+       }
+      ]
+     },
+     {
+      "name": "amountIn",
+      "type": "uint256",
+      "internalType": "uint256"
+     }
+    ]
+   },
+   {
+    "name": "minEthOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "recipient",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "ethOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "sellToQuotes",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct PairPadMultiRouter.Leg[]",
+    "components": [
+     {
+      "name": "market",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "hops",
+      "type": "tuple[]",
+      "internalType": "struct Hop[]",
+      "components": [
+       {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+         {
+          "name": "currency0",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "currency1",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+         },
+         {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+         },
+         {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "contract IHooks"
+         }
+        ]
+       },
+       {
+        "name": "v3",
+        "type": "bool",
+        "internalType": "bool"
+       }
+      ]
+     },
+     {
+      "name": "amountIn",
+      "type": "uint256",
+      "internalType": "uint256"
+     }
+    ]
+   },
+   {
+    "name": "minOuts",
+    "type": "uint256[]",
+    "internalType": "uint256[]"
+   },
+   {
+    "name": "recipient",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "sellToReference",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "legs",
+    "type": "tuple[]",
+    "internalType": "struct PairPadMultiRouter.Leg[]",
+    "components": [
+     {
+      "name": "market",
+      "type": "uint8",
+      "internalType": "uint8"
+     },
+     {
+      "name": "hops",
+      "type": "tuple[]",
+      "internalType": "struct Hop[]",
+      "components": [
+       {
+        "name": "key",
+        "type": "tuple",
+        "internalType": "struct PoolKey",
+        "components": [
+         {
+          "name": "currency0",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "currency1",
+          "type": "address",
+          "internalType": "Currency"
+         },
+         {
+          "name": "fee",
+          "type": "uint24",
+          "internalType": "uint24"
+         },
+         {
+          "name": "tickSpacing",
+          "type": "int24",
+          "internalType": "int24"
+         },
+         {
+          "name": "hooks",
+          "type": "address",
+          "internalType": "contract IHooks"
+         }
+        ]
+       },
+       {
+        "name": "v3",
+        "type": "bool",
+        "internalType": "bool"
+       }
+      ]
+     },
+     {
+      "name": "amountIn",
+      "type": "uint256",
+      "internalType": "uint256"
+     }
+    ]
+   },
+   {
+    "name": "minOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "recipient",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "amountOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "swapRouter",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract ISwapRouter02"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "unlockCallback",
+  "inputs": [
+   {
+    "name": "raw",
+    "type": "bytes",
+    "internalType": "bytes"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "bytes",
+    "internalType": "bytes"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "weth",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract IWETH9"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "event",
+  "name": "MultiBuy",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "buyer",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "ethIn",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "legs",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "MultiSell",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "seller",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "tokensIn",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "ethOut",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "legs",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "MultiSellToQuotes",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "seller",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "tokensIn",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "legs",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "error",
+  "name": "EthTransferFailed",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "InsufficientLaunchValue",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "LegMustEndAtQuote",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "LengthMismatch",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NativeValueMismatch",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NoLegs",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "NotPoolManager",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ReentrancyGuardReentrantCall",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "RouteBroken",
+  "inputs": [
+   {
+    "name": "index",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "RouteEndMismatch",
+  "inputs": [
+   {
+    "name": "expected",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "actual",
+    "type": "address",
+    "internalType": "address"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "SafeERC20FailedOperation",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "SlippageExceeded",
+  "inputs": [
+   {
+    "name": "amountOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "minAmountOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "ZeroAddress",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ZeroAmount",
+  "inputs": []
+ }
+]

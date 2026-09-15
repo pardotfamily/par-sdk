@@ -1,0 +1,370 @@
+[
+ {
+  "type": "constructor",
+  "inputs": [
+   {
+    "name": "escrow_",
+    "type": "address",
+    "internalType": "contract IPairPadFeeEscrow"
+   },
+   {
+    "name": "router_",
+    "type": "address",
+    "internalType": "contract IPairPadSwapRouter"
+   },
+   {
+    "name": "factory_",
+    "type": "address",
+    "internalType": "contract ISingleLaunchFactory"
+   },
+   {
+    "name": "multiFactory_",
+    "type": "address",
+    "internalType": "contract IMultiLaunchFactory"
+   },
+   {
+    "name": "operator_",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "receive",
+  "stateMutability": "payable"
+ },
+ {
+  "type": "function",
+  "name": "burnToken",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "amount",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "burned",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "buyback",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "quote",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "amountIn",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "minTokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "internalType": "uint256"
+   },
+   {
+    "name": "burnedNow",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "nonpayable"
+ },
+ {
+  "type": "function",
+  "name": "escrow",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract IPairPadFeeEscrow"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "factory",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract ISingleLaunchFactory"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "multiFactory",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract IMultiLaunchFactory"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "operator",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "pending",
+  "inputs": [
+   {
+    "name": "asset",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "poolKeyFor",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "quote",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "tuple",
+    "internalType": "struct PoolKey",
+    "components": [
+     {
+      "name": "currency0",
+      "type": "address",
+      "internalType": "Currency"
+     },
+     {
+      "name": "currency1",
+      "type": "address",
+      "internalType": "Currency"
+     },
+     {
+      "name": "fee",
+      "type": "uint24",
+      "internalType": "uint24"
+     },
+     {
+      "name": "tickSpacing",
+      "type": "int24",
+      "internalType": "int24"
+     },
+     {
+      "name": "hooks",
+      "type": "address",
+      "internalType": "contract IHooks"
+     }
+    ]
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "router",
+  "inputs": [],
+  "outputs": [
+   {
+    "name": "",
+    "type": "address",
+    "internalType": "contract IPairPadSwapRouter"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "function",
+  "name": "spent",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "quote",
+    "type": "address",
+    "internalType": "address"
+   }
+  ],
+  "outputs": [
+   {
+    "name": "",
+    "type": "uint256",
+    "internalType": "uint256"
+   }
+  ],
+  "stateMutability": "view"
+ },
+ {
+  "type": "event",
+  "name": "BoughtBack",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "quote",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "quoteIn",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   },
+   {
+    "name": "tokensOut",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "event",
+  "name": "Burned",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "indexed": true,
+    "internalType": "address"
+   },
+   {
+    "name": "amount",
+    "type": "uint256",
+    "indexed": false,
+    "internalType": "uint256"
+   }
+  ],
+  "anonymous": false
+ },
+ {
+  "type": "error",
+  "name": "NoMarket",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   },
+   {
+    "name": "quote",
+    "type": "address",
+    "internalType": "address"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "NotOperator",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ReentrancyGuardReentrantCall",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "SafeERC20FailedOperation",
+  "inputs": [
+   {
+    "name": "token",
+    "type": "address",
+    "internalType": "address"
+   }
+  ]
+ },
+ {
+  "type": "error",
+  "name": "ZeroAddress",
+  "inputs": []
+ },
+ {
+  "type": "error",
+  "name": "ZeroAmount",
+  "inputs": []
+ }
+]
