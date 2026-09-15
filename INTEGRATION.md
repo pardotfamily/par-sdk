@@ -13,7 +13,7 @@ Two stacks:
 
 TypeScript, built on viem. Covers discovery, metadata, prices, trade history, quotes, buy and sell transactions and the indexer. Node 18+ and browsers. Nothing is signed inside the SDK; buildBuy and buildSell return { to, data, value } for any wallet library. If you route Uniswap v4 with your own contracts, take the PoolKey from the SDK and skip step 7; the appendix has the raw ABI.
 
-Repo: https://github.com/pardotfamily/par-sdk (README, source, dist). Version 0.2.1.
+Repo: https://github.com/pardotfamily/par-sdk (README, source, dist). Version 0.2.3.
 
 ### 1. Install
 
@@ -150,7 +150,7 @@ Row shapes: appendix A8. Amounts are decimal strings in raw units, timestamps un
 ### 9. Display
 
 Trade fee to show = t.poolFee / 10000 percent (1% base plus creator tax, 0 to 10%). No protocol fee on top for integrators.
-Badge feesToHolders when creatorFeeRecipient equals ADDRESSES.holderVault, feesBurned when it equals ADDRESSES.burnVault (indexer rows carry both flags and feeMode = creator | holders | burn).
+Badge feesToHolders when creatorFeeRecipient equals ADDRESSES.holderVault, feesBurned when it equals ADDRESSES.burnVault, feesFloor when it equals ADDRESSES.floorVault (indexer rows carry the flags and feeMode = creator | holders | burn | floor; floor rows also carry `floor[]` with the wall and floor price per market).
 Multi tokens: one address, several pools. Sum volume and trades across markets. Chart in ETH (candles' *Eth fields).
 
 ### 10. Order of work
@@ -190,7 +190,9 @@ PairPadFeeSplitter            0x85a1CbbE2933F15f2599B9E0e03e6F89655fa4C1
 PairPadFeeSplitter v1         0x913A93cc2676F49454173323B85762b3e5906c43   (launches made under it keep paying it)
 PairPadHolderVault            0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C
 PairPadBurnVault              0x16c83D36539b6C92E6FC998D2a039fD7Ff31958E
-PairPadDisperse               0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC
+PairPadFloorVault             0xA5e805856e513F01d6aC992aC45FE54E5e601829   price-floor launches: fees become a locked buy wall
+PairPadDisperseV2             0x28a5f3F898E99753E322fdce6EFa8b294C215B9b   holder payouts (ETH and tokens, launch-tagged)
+PairPadDisperse v1            0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC   token-only payouts before Sep 2026
 
 WETH                          0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73
 USDG                          0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168
@@ -424,8 +426,9 @@ market   index for multi tokens, null for single. Multi rows also carry pairToke
 Trade fee = poolFee, LP fee of the pool. Nothing else is charged. No protocol fee on top for integrators.
 baseFeeBps 100 split 50/50 creator/protocol. creatorTaxBps 100% to creator. Collected from the locked position by a keeper (FeesCollected on the locker), creator claims from PairPadFeeEscrow.
 Protocol share in token is burned (ProtocolShareBurned). Protocol share in quote goes buybackBps() of the splitter (6000 on current, 8000 on v1) to buy and burn $par for launches with protocolFeeRecipient = a PairPadFeeSplitter.
-feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator share is bought back into the token and sent to holders pro rata (Dispersed on PairPadDisperse).
+feesToHolders = true when creatorFeeRecipient = PairPadHolderVault. Creator share is paid to holders pro rata every hour in the asset it was earned in: the quote (ETH = address(0)) from buys, the token from sells. Events on PairPadDisperseV2: Dispersed(launch, asset, sender, round, total, recipients) per asset per round, Paid(launch, asset, to, amount) per recipient. GET /distributions?token=0x.. lists them with per-asset totals; GET /rewards?owner=0x..&token=0x.. what one wallet got. Rounds before Sep 2026 went through PairPadDisperse v1, in the token only.
 feesBurned = true when creatorFeeRecipient = PairPadBurnVault. Creator share is bought back into the token in its own pool and burned with the token share (BoughtBack, Burned on the vault; Transfer to address zero from the vault). GET /burns?token=0x.. lists the rounds. The vault's buys are ordinary Swap events on the PoolManager from the vault address.
+feesFloor = true when creatorFeeRecipient = PairPadFloorVault. Creator share in the quote is placed as one locked, quote-only liquidity position (the wall) in the launch pool just below the market, at the highest tick where the wall can buy the whole circulating supply; the token share and the tokens the wall absorbed are burned on every rebalance (WallMoved(token, quote, tickLower, tickUpper, liquidity, quoteInWall, circulating), Burned on the vault). The wall is owned by the vault, which has no withdraw; it is only ever re-placed higher. GET /floor?token=0x..[&quote=0x..] returns the current wall(s) and history; launch rows carry floor[] with floorPriceEth / floorMarketCapEth. The wall's fills are ordinary Swap events; its liquidity shows up in the pool like any LP.
 
 ## A10. Notes
 

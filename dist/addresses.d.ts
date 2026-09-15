@@ -12,7 +12,10 @@ export declare const ADDRESSES: {
     readonly feeSplitter: Address;
     readonly feeSplitterV1: Address;
     readonly holderVault: Address;
+    readonly burnVault: Address;
+    readonly floorVault: Address;
     readonly disperse: Address;
+    readonly disperseV1: Address;
     readonly buybackWallet: Address;
     readonly holdersWallet: Address;
     readonly par: Address;

@@ -58,6 +58,18 @@ export type IndexedLaunch = {
     burnedToken: string;
     /** The creator gave the creator share of fees to the holders (recipient is the holder vault). Permanent. */
     feesToHolders?: boolean;
+    /** The creator gave the creator share back to the token: bought back and burned (recipient is the burn vault). Permanent. */
+    feesBurned?: boolean;
+    /** The creator gave the creator share to a price floor (recipient is the floor vault): token share burned, quote share stood as a bid wall in the pool. Permanent. */
+    feesFloor?: boolean;
+    /** Where the creator share goes: "creator" (a wallet), "holders", "burn" or "floor". */
+    feeMode?: "creator" | "holders" | "burn" | "floor";
+    /** Floor launches: the standing wall per quote; null for every other launch. */
+    floor?: FloorWall[] | null;
+    /** Of burnedToken, what the burn vault burned (creator fees of a "burn" launch). */
+    feeBurnedToken?: string;
+    /** Of burnedToken, what the creator fee recipient burned itself (the Burn button by the fee claim). */
+    creatorBurnedToken?: string;
     tradeCount: number;
     /** Raw quote units per whole token; a decimal string that may carry fractional digits. Parse as a float. */
     lastPriceQuoteX18: string | null;
@@ -163,7 +175,14 @@ export type LaunchesQuery = {
     /** Only these tokens. */
     tokenIn?: Address[];
 };
-export type Distribution = {
+/** An asset holders were paid in: the zero address for ETH, a quote token, or the launch token. */
+export type PayoutAsset = {
+    asset: Address;
+    symbol: string;
+    decimals: number;
+};
+/** One Dispersed log: one asset of one round (or a batch of it). */
+export type Distribution = PayoutAsset & {
     id: string;
     round: number;
     total: string;
@@ -177,20 +196,76 @@ export type Distributions = {
     wallet: Address | null;
     rounds: number;
     lastAt: number | null;
-    /** Sum of every round, in token units. */
+    /** Sum paid in the launch token alone (older readers); `totals` has every asset. */
     total: string;
+    totals: (PayoutAsset & {
+        total: string;
+    })[];
     items: Distribution[];
+};
+export type FeeBurn = {
+    id: string;
+    amount: string;
+    txHash: string;
+    timestamp: number;
+};
+export type FeeBurns = {
+    token: Address;
+    vault: Address | null;
+    burns: number;
+    lastAt: number | null;
+    /** Everything the burn vault has burned for this token, raw units. */
+    total: string;
+    items: FeeBurn[];
+};
+/**
+ * One wall of a "floor" launch as last placed by the floor vault: a
+ * single-tick, quote-only Uniswap V4 position in the launch pool. The floor
+ * price is the wall's edge nearest the market, in raw quote units per whole
+ * token like every other price here.
+ */
+export type FloorWall = {
+    quote: Address;
+    /** False when the vault had nothing to stand yet (no quote, or no token in circulation). */
+    standing: boolean;
+    tickLower: number;
+    tickUpper: number;
+    liquidity: string;
+    /** Quote in the wall, raw units. */
+    quoteInWall: string;
+    /** Tokens outside the launch position when the wall was placed, raw units. */
+    circulating: string;
+    floorPriceQuote: string | null;
+    floorPriceEth: number | null;
+    floorMarketCapEth: number | null;
+    txHash: Hex;
+    timestamp: number;
+};
+export type Floor = {
+    token: Address;
+    vault: Address | null;
+    feeMode: "creator" | "holders" | "burn" | "floor";
+    walls: FloorWall[];
+    /** Burned by the floor vault: token-side fees plus what the wall absorbed, raw units. */
+    feeBurnedToken: string;
+    /** With `quote`: every placement of that wall, oldest first. */
+    history: FloorWall[] | null;
 };
 export type Reward = {
     id: string;
     token: Address;
+    asset: Address;
     amount: string;
     txHash: Hex;
     timestamp: number;
 };
 export type Rewards = {
     owner: Address;
+    /** Launch-token total alone, when `token` was given; `totals` has every asset. */
     total: string | null;
+    totals: (PayoutAsset & {
+        total: string;
+    })[] | null;
     items: Reward[];
 };
 export type Buyback = {
@@ -269,8 +344,12 @@ export declare class ParIndexer {
     positions(owner: Address, limit?: number): Promise<Position[]>;
     /** Fee collections the locker made for a token, newest first. */
     fees(token: Address, limit?: number): Promise<FeeCollection[]>;
-    /** Holder-rewards rounds of a "fees to holders" launch, newest first, with totals. */
+    /** Holder-rewards payouts of a "fees to holders" launch (one row per asset per round), newest first, with totals per asset. */
     distributions(token: Address, limit?: number): Promise<Distributions>;
+    /** Buyback & burn rounds of a "burn" launch (the burn vault's burns), newest first, with totals. */
+    burns(token: Address, limit?: number): Promise<FeeBurns>;
+    /** A "floor" launch's standing wall per quote; with `quote`, that wall's history too (the floor line). */
+    floor(token: Address, quote?: Address, limit?: number): Promise<Floor>;
     /** What a wallet received from holder rewards; `token` narrows it (and fills `total`). */
     rewards(owner: Address, token?: Address, limit?: number): Promise<Rewards>;
     /** $par bought with protocol fees and burned, newest first, with totals. */

@@ -80,9 +80,17 @@ export class ParIndexer {
     fees(token, limit) {
         return this.get("/fees", { token, limit });
     }
-    /** Holder-rewards rounds of a "fees to holders" launch, newest first, with totals. */
+    /** Holder-rewards payouts of a "fees to holders" launch (one row per asset per round), newest first, with totals per asset. */
     distributions(token, limit) {
         return this.get("/distributions", { token, limit });
+    }
+    /** Buyback & burn rounds of a "burn" launch (the burn vault's burns), newest first, with totals. */
+    burns(token, limit) {
+        return this.get("/burns", { token, limit });
+    }
+    /** A "floor" launch's standing wall per quote; with `quote`, that wall's history too (the floor line). */
+    floor(token, quote, limit) {
+        return this.get("/floor", { token, quote, limit });
     }
     /** What a wallet received from holder rewards; `token` narrows it (and fills `total`). */
     rewards(owner, token, limit) {

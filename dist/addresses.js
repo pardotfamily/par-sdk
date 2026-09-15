@@ -19,7 +19,20 @@ export const ADDRESSES = {
     feeSplitter: "0x85a1CbbE2933F15f2599B9E0e03e6F89655fa4C1",
     feeSplitterV1: "0x913A93cc2676F49454173323B85762b3e5906c43",
     holderVault: "0x4B79B8298cd890A82dC9De1dE5dBb745Cf04353C",
-    disperse: "0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC",
+    // The burn vault is the creator fee recipient of "buyback & burn" launches:
+    // it buys the token in its own pool with the creator's quote share and burns
+    // that plus the token share. No owner; it can only buy in par pools or burn.
+    burnVault: "0x16c83D36539b6C92E6FC998D2a039fD7Ff31958E",
+    // The floor vault is the creator fee recipient of "price floor" launches:
+    // every creator fee (quote side) becomes a single locked buy wall in the
+    // launch pool at the highest price the wall can hold against the whole
+    // circulating supply; the token side is burned. The floor only rises.
+    floorVault: "0xA5e805856e513F01d6aC992aC45FE54E5e601829",
+    // Pays holder rewards: one call per asset per launch, tagged with the launch
+    // (Dispersed / Paid events). ETH and ERC-20s. Permissionless, no owner.
+    disperse: "0x28a5f3F898E99753E322fdce6EFa8b294C215B9b",
+    // The first disperser: token-only payouts, before September 2026.
+    disperseV1: "0xF09E4997Ca8aC5869de8B1C63acc4a3180c087EC",
     buybackWallet: "0x5bA4a4A197111CE8B6a2C2776D7836A9E1868033",
     holdersWallet: "0xB1a7a3A37F41e4dC9507F9B0F946B7F786c4AFb4",
     par: "0x507B6F349a80114097A67B8b4677367acC15b220",
