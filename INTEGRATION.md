@@ -440,3 +440,36 @@ feesFloor = true when creatorFeeRecipient = PairPadFloorVault. Creator share in 
 - No hook, no admin on pools. Nothing can pause, blacklist or change a pool fee after launch.
 - LP lock: the position NFT is not burned and not in a third party locker, it is owned by our own locker contract. Generic checks (LP burned, Team Finance, Unicrypt, etc) will show it as unlocked. Treat PositionManager.ownerOf(positionId) == PairPadLocker or PairPadMultiLocker as locked forever. positionId is in getLaunchedToken / getMarkets and on the indexer row (positionId, markets[].positionId). Locker source: contracts/src/v2/PairPadLaunchLocker.sol, contracts/src/v3/PairPadMultiLaunchLocker.sol.
 - Public RPC: 10000 block eth_getLogs, no batching, retries needed. Use own node or provider in production.
+
+## A11. Arc
+
+par runs on Arc as a separate deployment of the same contracts (multi-market stack only). Everything above applies, with these differences:
+
+```
+Arc mainnet   chain id 5042      addresses published here and in src/addresses.ts (ADDRESSES_ARC) right after the mainnet deploy
+Arc testnet   chain id 5042002   RPC https://rpc.testnet.arc.io   Explorer https://testnet.arcscan.app
+
+Testnet (deployed 2026-09-14, same code as mainnet):
+PairPadMultiLaunchFactory     0x920Ca489f8c9573645b8aB00dad60fc81c9487fd
+PairPadMultiRouter            0x7cda46222a6B202f6B18A51b9a558Bc38a655083
+PairPadMultiLocker            0x344A4A773Df4FFa89AE6Dc4f1418123990a34647
+PairPadFeeEscrow              0x96AB924F958da3a8d83fCdF5Ce692653fCEea9fD
+PairPadQuotePricer            0xcebC312381D1F816da478Acc8A37711808909d90
+PairPadHolderVault            0x64D085E5269fdAFfc28363f21b208f8A2EfCcD0A
+PairPadBurnVault              0x4067820296a0C717c3e31B05E98505b3215c5544
+PairPadFloorVault             0x5567633b002f935181f0fEAa8953Bd0ad5610b0D
+PairPadDisperseV2             0x372A36543d29F00053161BCAD1cCCCC595a7cA88
+PoolManager (testnet: UnitFlow fork of v4)    0x33C02bfb9e39AAAe30F8bE86b850f8ce53d20C0b
+PositionManager (testnet)                     0xA464d4e7614546a127773CedBDDd64FB81421723
+USDC                          0x3600000000000000000000000000000000000000   6 decimals, the reference asset
+Test token SMOKE              0x7e1bEeD21c92F0E1eEee1a60115AA3BCF289b45C   USDC quoted
+
+Mainnet Uniswap v4 is canonical: PoolManager 0x8366a39CC670B4001A1121B8F6A443A643e40951, PositionManager 0x6049c9a0e26405C0985f9E3685C87d0aE917f82B.
+```
+
+- Gas on Arc is USDC. The reference asset (what "ETH" means everywhere above: prices, `*Eth` fields, `phantomQuote`, `minReferenceEth`) is the USDC ERC-20 at `0x3600…0000`, 6 decimals, not the native coin. `address(0)` is never a pair token on Arc; a USDC quoted launch has `pairToken == USDC`.
+- No payable entry points. `buyWithEth`, `sellToEth`, `launchAndBuyWithEth` are replaced by `buyWithReference(token, legs, amountIn, minTokensOut, recipient)`, `sellToReference(token, legs, minOut, recipient)`, `launchAndBuyWithReference(...)` on PairPadMultiRouter, after `approve(router, amountIn)` on USDC. Same `Leg[]` shape as A7b. `factory.nativeIsReference()` returns false on Arc, true on Robinhood Chain, so one code path can branch on it.
+- ABIs of the Arc build: `abi/arc/` in this repo (superset of the Robinhood Chain ABIs).
+- Fees, fee modes, locker, pool fee, launch flow, events (`TokenLaunched`, `Swap`, `FeesCollected`, `WallMoved`, `Dispersed`): identical.
+- Indexer API and token pages for Arc get their own host, published together with the mainnet addresses. Until then read launches from the factory (A2) and trades from the PoolManager (A6).
+- Testnet only: Uniswap is a fork (UnitFlow) with a v1-style V3 SwapRouter, so router hops through V3 (non-USDC quotes) do not work there; USDC quoted markets work fully. Mainnet uses canonical Uniswap and has no such limit.
