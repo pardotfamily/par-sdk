@@ -446,32 +446,40 @@ feesFloor = true when creatorFeeRecipient = PairPadFloorVault. Creator share in 
 par runs on Arc as a separate deployment of the same contracts (multi-market stack only). Everything above applies, with these differences:
 
 ```
-Arc mainnet   chain id 5042      App https://arc.par.family           Indexer https://api-arc.par.family           (live after the mainnet deploy; addresses published here and in src/addresses.ts, ADDRESSES_ARC)
+Arc mainnet   chain id 5042      App https://arc.par.family           Indexer https://api-arc.par.family           RPC https://rpc.mainnet.arc.io
 Arc testnet   chain id 5042002   App https://arc-testnet.par.family   Indexer https://api-arc-testnet.par.family   RPC https://rpc.testnet.arc.io   Explorer https://testnet.arcscan.app
 
 Token page: <app>/token/<address>. Indexer: same API as A8, same row shape; amounts in *Eth fields and quoteRaised etc. are in USDC (6 decimals where raw).
 
-Testnet (deployed 2026-09-14, same code as mainnet):
+par contracts, SAME ADDRESSES on mainnet and testnet (same deployer, same nonce order; mainnet deployed 2026-09-16 at block 21074807, testnet 2026-09-14):
 PairPadMultiLaunchFactory     0x920Ca489f8c9573645b8aB00dad60fc81c9487fd
 PairPadMultiRouter            0x7cda46222a6B202f6B18A51b9a558Bc38a655083
 PairPadMultiLocker            0x344A4A773Df4FFa89AE6Dc4f1418123990a34647
 PairPadFeeEscrow              0x96AB924F958da3a8d83fCdF5Ce692653fCEea9fD
 PairPadQuotePricer            0xcebC312381D1F816da478Acc8A37711808909d90
+PairPadFeeSplitter            0x031f3D93A94c5F34EE3e608566245AAC271523A9
 PairPadHolderVault            0x64D085E5269fdAFfc28363f21b208f8A2EfCcD0A
 PairPadBurnVault              0x4067820296a0C717c3e31B05E98505b3215c5544
 PairPadFloorVault             0x5567633b002f935181f0fEAa8953Bd0ad5610b0D
 PairPadDisperseV2             0x372A36543d29F00053161BCAD1cCCCC595a7cA88
-PoolManager (testnet: UnitFlow fork of v4)    0x33C02bfb9e39AAAe30F8bE86b850f8ce53d20C0b
-PositionManager (testnet)                     0xA464d4e7614546a127773CedBDDd64FB81421723
-USDC                          0x3600000000000000000000000000000000000000   6 decimals, the reference asset
-Test token SMOKE              0x7e1bEeD21c92F0E1eEee1a60115AA3BCF289b45C   USDC quoted
+USDC                          0x3600000000000000000000000000000000000000   6 decimals, the reference asset (both networks)
 
-Mainnet Uniswap v4 is canonical: PoolManager 0x8366a39CC670B4001A1121B8F6A443A643e40951, PositionManager 0x6049c9a0e26405C0985f9E3685C87d0aE917f82B.
+Differs per network:
+mainnet  PoolManager (canonical Uniswap v4)   0x8366a39CC670B4001A1121B8F6A443A643e40951
+mainnet  PositionManager                      0x6049c9a0e26405C0985f9E3685C87d0aE917f82B
+mainnet  EURC (pricer's second anchor)        0xbef5f6d51cb62b58e6a8f77868681825c6fe21c1
+mainnet  test token ARCTEST                   0xA8B5227A3705e83A1C71b82Cf6f4E0Dc27A6A792   USDC quoted, first launch on Arc mainnet
+testnet  PoolManager (UnitFlow fork of v4)    0x33C02bfb9e39AAAe30F8bE86b850f8ce53d20C0b
+testnet  PositionManager                      0xA464d4e7614546a127773CedBDDd64FB81421723
+testnet  EURC                                 0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a
+testnet  test token SMOKE                     0x7e1bEeD21c92F0E1eEee1a60115AA3BCF289b45C   USDC quoted
 ```
+
+Mainnet source verification: Arc's public explorer with a verification API was not open at deploy time (Sourcify does not list 5042 yet); the contracts are verified on the testnet at the same addresses with the same bytecode, and mainnet verification is submitted as soon as an explorer accepts it.
 
 - Gas on Arc is USDC. The reference asset (what "ETH" means everywhere above: prices, `*Eth` fields, `phantomQuote`, `minReferenceEth`) is the USDC ERC-20 at `0x3600…0000`, 6 decimals, not the native coin. `address(0)` is never a pair token on Arc; a USDC quoted launch has `pairToken == USDC`.
 - No payable entry points. `buyWithEth`, `sellToEth`, `launchAndBuyWithEth` are replaced by `buyWithReference(token, legs, amountIn, minTokensOut, recipient)`, `sellToReference(token, legs, minOut, recipient)`, `launchAndBuyWithReference(...)` on PairPadMultiRouter, after `approve(router, amountIn)` on USDC. Same `Leg[]` shape as A7b. `factory.nativeIsReference()` returns false on Arc, true on Robinhood Chain, so one code path can branch on it.
 - ABIs of the Arc build: `abi/arc/` in this repo (superset of the Robinhood Chain ABIs).
 - Fees, fee modes, locker, pool fee, launch flow, events (`TokenLaunched`, `Swap`, `FeesCollected`, `WallMoved`, `Dispersed`): identical.
-- Hosts follow one scheme per chain: `<chain>.par.family` for the app, `api-<chain>.par.family` for the indexer, `-testnet` suffix for testnets. The testnet pair is live now, the mainnet pair goes live with the deploy; config against both today and switch the base URL on launch day.
+- Hosts follow one scheme per chain: `<chain>.par.family` for the app, `api-<chain>.par.family` for the indexer, `-testnet` suffix for testnets. Both pairs are live.
 - Testnet only: Uniswap is a fork (UnitFlow) with a v1-style V3 SwapRouter, so router hops through V3 (non-USDC quotes) do not work there; USDC quoted markets work fully. Mainnet uses canonical Uniswap and has no such limit.
