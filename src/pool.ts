@@ -1,5 +1,6 @@
 import { encodeAbiParameters, keccak256, zeroAddress, type Address, type Hex, type PublicClient } from "viem";
-import { ADDRESSES } from "./addresses.js";
+import { getAddresses } from "./addresses.js";
+import { ROBINHOOD_CHAIN_ID } from "./chain.js";
 import { poolManagerAbi } from "./abi.js";
 
 /** A Uniswap v4 pool key. par pools never have a hook. */
@@ -48,9 +49,9 @@ function slot0Slot(poolId: Hex): Hex {
 }
 
 /** The pool's current sqrtPriceX96, straight from PoolManager storage. */
-export async function readSqrtPriceX96(client: PublicClient, poolId: Hex): Promise<bigint> {
+export async function readSqrtPriceX96(client: PublicClient, poolId: Hex, chainId: number = ROBINHOOD_CHAIN_ID): Promise<bigint> {
   const word = await client.readContract({
-    address: ADDRESSES.poolManager,
+    address: getAddresses(chainId).poolManager,
     abi: poolManagerAbi,
     functionName: "extsload",
     args: [slot0Slot(poolId)],
@@ -68,7 +69,7 @@ export function priceX18FromSqrt(sqrtPriceX96: bigint, tokenIsCurrency0: boolean
 }
 
 /** Spot price of a market in raw quote units per whole token. */
-export async function readSpotPriceX18(client: PublicClient, token: Address, key: PoolKey): Promise<bigint> {
-  const sqrt = await readSqrtPriceX96(client, poolIdOf(key));
+export async function readSpotPriceX18(client: PublicClient, token: Address, key: PoolKey, chainId: number = ROBINHOOD_CHAIN_ID): Promise<bigint> {
+  const sqrt = await readSqrtPriceX96(client, poolIdOf(key), chainId);
   return priceX18FromSqrt(sqrt, tokenIsCurrency0(token, key));
 }

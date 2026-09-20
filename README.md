@@ -1,6 +1,6 @@
 # par-sdk
 
-TypeScript SDK for [par](https://par.family), the token launchpad on Robinhood Chain. Built on [viem](https://viem.sh); works in Node 18+ and browsers.
+TypeScript SDK for [par](https://par.family), the token launchpad on Robinhood Chain, Arc, Base and BNB Chain. Built on [viem](https://viem.sh); works in Node 18+ and browsers.
 
 Every par token is a plain Uniswap v4 pool (no hook) from its first block, so you can already trade it with any v4 router. This SDK covers the launchpad-specific parts: finding launches, resolving a token to its pool(s), paying in native ETH for pools quoted in another asset, splitting a trade across the markets of a multi-market token, and the public indexer API.
 
@@ -18,7 +18,9 @@ npm i viem github:pardotfamily/par-sdk
 import { createPar, buildApprove } from "par-sdk";
 import { parseEther, formatEther } from "viem";
 
-const par = createPar({ rpcUrl: process.env.RPC_URL }); // any Robinhood Chain RPC; public node if omitted
+const par = createPar({ rpcUrl: process.env.RPC_URL }); // Robinhood Chain by default; public node if omitted
+// Other chains: createPar({ chainId: 5042 }) Arc, { chainId: 8453 } Base, { chainId: 56 } BNB Chain.
+// Addresses, deploy blocks and public indexer hosts per chain: ADDRESSES_BY_CHAIN, DEPLOY_BLOCK_BY_CHAIN, HOSTS_BY_CHAIN.
 
 // Is this a par token, and what does it trade against?
 const t = await par.getTradable("0x7841a0a37834EEB13Ad5DBaD692049C84CD6A73C");

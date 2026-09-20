@@ -1,16 +1,18 @@
 import { encodeAbiParameters, encodeFunctionData, keccak256, maxUint256, toHex, zeroAddress, } from "viem";
-import { ADDRESSES } from "./addresses.js";
+import { getAddresses } from "./addresses.js";
 import { erc20Abi, multiRouterAbi, quotePricerAbi, routerAbi } from "./abi.js";
+import { ROBINHOOD_CHAIN_ID, getReference, isReference } from "./chain.js";
 const NO_HOPS = [];
 /**
- * The route between ETH and a quote asset, as the pricer stores it. Null when
- * the quote has no route at all (then the market trades in its quote only).
+ * The route between the reference asset and a quote asset, as the pricer
+ * stores it. Null when the quote has no route at all (then the market
+ * trades in its quote only).
  */
-export async function getEthRoute(client, pairToken) {
-    if (pairToken === zeroAddress)
+export async function getEthRoute(client, pairToken, chainId = ROBINHOOD_CHAIN_ID) {
+    if (isReference(pairToken, chainId))
         return { buyHops: NO_HOPS, sellHops: NO_HOPS, qualifies: true };
     const [hops, qualifies] = await client.readContract({
-        address: ADDRESSES.quotePricer,
+        address: getAddresses(chainId).quotePricer,
         abi: quotePricerAbi,
         functionName: "route",
         args: [pairToken],
@@ -20,9 +22,9 @@ export async function getEthRoute(client, pairToken) {
     const sellHops = hops.map((h) => ({ key: { ...h.key }, v3: h.v3 }));
     return { buyHops: [...sellHops].reverse(), sellHops, qualifies };
 }
-/** Routes for every market of a launch, null entries for markets ETH cannot reach. */
-export async function getEthRoutes(client, launch) {
-    return Promise.all(launch.markets.map((m) => getEthRoute(client, m.pairToken)));
+/** Routes for every market of a launch, null entries for markets the reference cannot reach. */
+export async function getEthRoutes(client, launch, chainId = ROBINHOOD_CHAIN_ID) {
+    return Promise.all(launch.markets.map((m) => getEthRoute(client, m.pairToken, chainId)));
 }
 /** Split `amount` over markets proportionally to `weights` (e.g. tokens left on each curve); equal split if no weights. */
 export function splitAmount(amount, count, weights) {
@@ -50,16 +52,25 @@ export function buildLegs(launch, routes, amountIn, side, weights) {
         amountIn: slices[i],
     })).filter((l) => l.amountIn > 0n);
 }
-/** Buy with native ETH. `minTokensOut` is the slippage floor on the total received. */
-export function buildBuyWithEth(launch, routes, ethIn, minTokensOut, recipient, weights) {
+/**
+ * Buy with the reference asset: native ETH on Robinhood Chain (sent as
+ * `value`), the USDC ERC-20 on Arc (taken from an allowance, see
+ * `buildBuyWithReference`). `minTokensOut` is the slippage floor on the
+ * total received.
+ */
+export function buildBuyWithEth(launch, routes, ethIn, minTokensOut, recipient, weights, chainId = ROBINHOOD_CHAIN_ID) {
+    const ref = getReference(chainId);
+    if (!ref.isNative)
+        return buildBuyWithReference(launch, routes, ethIn, minTokensOut, recipient, weights, chainId);
+    const a = getAddresses(chainId);
     if (launch.kind === "single") {
         const m = launch.markets[0];
         const route = routes[0];
         if (!route)
             throw new Error(`no ETH route to ${m.quoteSymbol}; trade this pool in its quote asset`);
-        if (m.pairToken === zeroAddress) {
+        if (m.pairToken === ref.address) {
             return {
-                to: ADDRESSES.router,
+                to: a.router,
                 data: encodeFunctionData({
                     abi: routerAbi,
                     functionName: "swapExactIn",
@@ -69,7 +80,7 @@ export function buildBuyWithEth(launch, routes, ethIn, minTokensOut, recipient, 
             };
         }
         return {
-            to: ADDRESSES.router,
+            to: a.router,
             data: encodeFunctionData({ abi: routerAbi, functionName: "buyWithEth", args: [m.poolKey, route.buyHops, minTokensOut, recipient] }),
             value: ethIn,
         };
@@ -78,21 +89,66 @@ export function buildBuyWithEth(launch, routes, ethIn, minTokensOut, recipient, 
     if (legs.length === 0)
         throw new Error("no market of this token is reachable from ETH");
     return {
-        to: ADDRESSES.multiRouter,
+        to: a.multiRouter,
         data: encodeFunctionData({ abi: multiRouterAbi, functionName: "buyWithEth", args: [launch.token, legs, minTokensOut, recipient] }),
         value: ethIn,
     };
 }
-/** Sell for native ETH. The router must be approved for `tokensIn` first (see `buildApprove`). */
-export function buildSellToEth(launch, routes, tokensIn, minEthOut, recipient, weights) {
+/**
+ * Buy with the chain's reference asset paid as an ERC-20 (USDC on Arc):
+ * the router must be approved for `amountIn` first (`buildApprove` with
+ * `getReference(chainId).address`). On a chain whose reference is native
+ * this is `buildBuyWithEth`. Single-market launches only have a reference
+ * entry point for a pool quoted in the reference itself; the ERC-20 zap
+ * through another quote exists on the multi router alone.
+ */
+export function buildBuyWithReference(launch, routes, amountIn, minTokensOut, recipient, weights, chainId = ROBINHOOD_CHAIN_ID) {
+    const ref = getReference(chainId);
+    if (ref.isNative)
+        return buildBuyWithEth(launch, routes, amountIn, minTokensOut, recipient, weights, chainId);
+    const a = getAddresses(chainId);
+    if (launch.kind === "single") {
+        const m = launch.markets[0];
+        if (!isReference(m.pairToken, chainId)) {
+            throw new Error(`single-market pool quoted in ${m.quoteSymbol} has no ${ref.symbol} zap on this chain; trade it in its quote asset`);
+        }
+        return {
+            to: a.router,
+            data: encodeFunctionData({
+                abi: routerAbi,
+                functionName: "swapExactIn",
+                args: [m.poolKey, !m.tokenIsCurrency0, amountIn, minTokensOut, recipient],
+            }),
+            value: 0n,
+        };
+    }
+    const legs = buildLegs(launch, routes, amountIn, "buy", weights);
+    if (legs.length === 0)
+        throw new Error(`no market of this token is reachable from ${ref.symbol}`);
+    return {
+        to: a.multiRouter,
+        data: encodeFunctionData({ abi: multiRouterAbi, functionName: "buyWithReference", args: [launch.token, legs, amountIn, minTokensOut, recipient] }),
+        value: 0n,
+    };
+}
+/**
+ * Sell for the reference asset: native ETH on Robinhood Chain, the USDC
+ * ERC-20 on Arc (see `buildSellToReference`). The router must be approved
+ * for `tokensIn` first (see `buildApprove`).
+ */
+export function buildSellToEth(launch, routes, tokensIn, minEthOut, recipient, weights, chainId = ROBINHOOD_CHAIN_ID) {
+    const ref = getReference(chainId);
+    if (!ref.isNative)
+        return buildSellToReference(launch, routes, tokensIn, minEthOut, recipient, weights, chainId);
+    const a = getAddresses(chainId);
     if (launch.kind === "single") {
         const m = launch.markets[0];
         const route = routes[0];
         if (!route)
             throw new Error(`no ETH route from ${m.quoteSymbol}; trade this pool in its quote asset`);
-        if (m.pairToken === zeroAddress) {
+        if (m.pairToken === ref.address) {
             return {
-                to: ADDRESSES.router,
+                to: a.router,
                 data: encodeFunctionData({
                     abi: routerAbi,
                     functionName: "swapExactIn",
@@ -102,7 +158,7 @@ export function buildSellToEth(launch, routes, tokensIn, minEthOut, recipient, w
             };
         }
         return {
-            to: ADDRESSES.router,
+            to: a.router,
             data: encodeFunctionData({
                 abi: routerAbi,
                 functionName: "sellToEth",
@@ -115,33 +171,103 @@ export function buildSellToEth(launch, routes, tokensIn, minEthOut, recipient, w
     if (legs.length === 0)
         throw new Error("no market of this token is reachable from ETH");
     return {
-        to: ADDRESSES.multiRouter,
+        to: a.multiRouter,
         data: encodeFunctionData({ abi: multiRouterAbi, functionName: "sellToEth", args: [launch.token, legs, minEthOut, recipient] }),
         value: 0n,
     };
 }
-/** Swap in one market's own quote asset (no ETH zap). For ERC-20 quotes approve the router for `amountIn` first. */
-export function buildSwapInQuote(launch, market, side, amountIn, minAmountOut, recipient) {
+/**
+ * Sell for the chain's reference asset delivered as an ERC-20 (USDC on
+ * Arc). The router must be approved for `tokensIn` first. On a chain whose
+ * reference is native this is `buildSellToEth`; the single-market limit of
+ * `buildBuyWithReference` applies.
+ */
+export function buildSellToReference(launch, routes, tokensIn, minOut, recipient, weights, chainId = ROBINHOOD_CHAIN_ID) {
+    const ref = getReference(chainId);
+    if (ref.isNative)
+        return buildSellToEth(launch, routes, tokensIn, minOut, recipient, weights, chainId);
+    const a = getAddresses(chainId);
+    if (launch.kind === "single") {
+        const m = launch.markets[0];
+        if (!isReference(m.pairToken, chainId)) {
+            throw new Error(`single-market pool quoted in ${m.quoteSymbol} has no ${ref.symbol} zap on this chain; trade it in its quote asset`);
+        }
+        return {
+            to: a.router,
+            data: encodeFunctionData({
+                abi: routerAbi,
+                functionName: "swapExactIn",
+                args: [m.poolKey, m.tokenIsCurrency0, tokensIn, minOut, recipient],
+            }),
+            value: 0n,
+        };
+    }
+    const legs = buildLegs(launch, routes, tokensIn, "sell", weights);
+    if (legs.length === 0)
+        throw new Error(`no market of this token is reachable from ${ref.symbol}`);
+    return {
+        to: a.multiRouter,
+        data: encodeFunctionData({ abi: multiRouterAbi, functionName: "sellToReference", args: [launch.token, legs, minOut, recipient] }),
+        value: 0n,
+    };
+}
+/** Swap in one market's own quote asset (no zap). For ERC-20 quotes approve the router for `amountIn` first. */
+export function buildSwapInQuote(launch, market, side, amountIn, minAmountOut, recipient, chainId = ROBINHOOD_CHAIN_ID) {
+    const a = getAddresses(chainId);
+    // `value` carries the input only when the quote is literally native (address zero), whatever the chain.
     if (launch.kind === "multi") {
         if (side === "sell") {
             const legs = [{ market: market.index, hops: NO_HOPS, amountIn }];
             return {
-                to: ADDRESSES.multiRouter,
+                to: a.multiRouter,
                 data: encodeFunctionData({ abi: multiRouterAbi, functionName: "sellToQuotes", args: [launch.token, legs, [minAmountOut], recipient] }),
                 value: 0n,
             };
         }
         return {
-            to: ADDRESSES.multiRouter,
+            to: a.multiRouter,
             data: encodeFunctionData({ abi: multiRouterAbi, functionName: "buyWithQuote", args: [launch.token, market.index, amountIn, minAmountOut, recipient] }),
             value: market.pairToken === zeroAddress ? amountIn : 0n,
         };
     }
     const zeroForOne = side === "buy" ? !market.tokenIsCurrency0 : market.tokenIsCurrency0;
     return {
-        to: ADDRESSES.router,
+        to: a.router,
         data: encodeFunctionData({ abi: routerAbi, functionName: "swapExactIn", args: [market.poolKey, zeroForOne, amountIn, minAmountOut, recipient] }),
         value: side === "buy" && market.pairToken === zeroAddress ? amountIn : 0n,
+    };
+}
+/**
+ * Launch a multi-market token and land the opening buy in the same
+ * transaction, through the multi router. `launchFee` is the factory's
+ * `launchFee()`, always paid as `value`; `amountIn` is the opening buy in
+ * the reference asset, sent along as `value` where the reference is native
+ * and taken from an allowance on the router otherwise (`buildApprove` with
+ * `getReference(chainId).address`). With no legs and a zero amount only the
+ * launch happens.
+ */
+export function buildLaunchAndBuy(params, launchConfigId, pairTokens, legs, amountIn, minTokensOut, launchFee, chainId = ROBINHOOD_CHAIN_ID) {
+    const ref = getReference(chainId);
+    const a = getAddresses(chainId);
+    if (ref.isNative) {
+        return {
+            to: a.multiRouter,
+            data: encodeFunctionData({
+                abi: multiRouterAbi,
+                functionName: "launchAndBuyWithEth",
+                args: [params, launchConfigId, pairTokens, legs, minTokensOut],
+            }),
+            value: launchFee + amountIn,
+        };
+    }
+    return {
+        to: a.multiRouter,
+        data: encodeFunctionData({
+            abi: multiRouterAbi,
+            functionName: "launchAndBuyWithReference",
+            args: [params, launchConfigId, pairTokens, legs, amountIn, minTokensOut],
+        }),
+        value: launchFee,
     };
 }
 /** ERC-20 approval of `spender` (the router of this launch, by default) for `amount`. */
@@ -166,25 +292,37 @@ function allowanceSlot(owner, spender) {
     const inner = keccak256(encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [owner, 1n]));
     return keccak256(encodeAbiParameters([{ type: "address" }, { type: "bytes32" }], [spender, inner]));
 }
-/** Tokens a buy of `ethIn` would return right now, price impact and LP fee included. */
-export async function quoteBuyWithEth(client, launch, routes, ethIn, weights) {
-    const tx = buildBuyWithEth(launch, routes, ethIn, 0n, SIM_ACCOUNT, weights);
+/**
+ * Tokens a buy of `ethIn` (in raw units of the reference asset) would return
+ * right now, price impact and LP fee included. Where the reference is native
+ * the buyer's balance is overridden and any account will do. Where it is an
+ * ERC-20 (Arc) the router pulls the input from an allowance that cannot be
+ * overridden (the USDC contract's storage layout is not ours to know), so
+ * pass an `owner` that has approved the router; the balance itself is still
+ * overridden, since on Arc the native and ERC-20 balances are one figure
+ * seen at 18 and 6 decimals.
+ */
+export async function quoteBuyWithEth(client, launch, routes, ethIn, weights, chainId = ROBINHOOD_CHAIN_ID, owner = SIM_ACCOUNT) {
+    const ref = getReference(chainId);
+    const tx = buildBuyWithEth(launch, routes, ethIn, 0n, owner, weights, chainId);
+    const nativeIn = ref.isNative ? ethIn : ethIn * 10n ** BigInt(18 - ref.decimals);
     const { data } = await client.call({
-        account: SIM_ACCOUNT,
+        account: owner,
         to: tx.to,
         data: tx.data,
         value: tx.value,
-        stateOverride: [{ address: SIM_ACCOUNT, balance: ethIn * 2n }],
+        stateOverride: [{ address: owner, balance: nativeIn * 2n }],
     });
     return BigInt(data ?? "0x0");
 }
 /**
- * ETH a sell of `tokensIn` would pay out right now, price impact and LP fee
- * included. The seller's balance and approval are overridden in the
- * simulation, so this quotes for any wallet, tokens held or not.
+ * Reference asset (raw units) a sell of `tokensIn` would pay out right now,
+ * price impact and LP fee included. The seller's balance and approval are
+ * overridden in the simulation, so this quotes for any wallet, tokens held
+ * or not.
  */
-export async function quoteSellToEth(client, launch, routes, tokensIn, owner = SIM_ACCOUNT, weights) {
-    const tx = buildSellToEth(launch, routes, tokensIn, 0n, owner, weights);
+export async function quoteSellToEth(client, launch, routes, tokensIn, owner = SIM_ACCOUNT, weights, chainId = ROBINHOOD_CHAIN_ID) {
+    const tx = buildSellToEth(launch, routes, tokensIn, 0n, owner, weights, chainId);
     const { data } = await client.call({
         account: owner,
         to: tx.to,

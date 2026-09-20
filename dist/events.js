@@ -1,5 +1,6 @@
 import { getAbiItem, parseEventLogs } from "viem";
-import { ADDRESSES, FACTORY_DEPLOY_BLOCK } from "./addresses.js";
+import { getAddresses, deployBlockOf } from "./addresses.js";
+import { ROBINHOOD_CHAIN_ID } from "./chain.js";
 import { factoryAbi, multiFactoryAbi, poolManagerAbi } from "./abi.js";
 import { priceX18FromSqrt } from "./pool.js";
 export const tokenLaunchedEvent = getAbiItem({ abi: factoryAbi, name: "TokenLaunched" });
@@ -7,9 +8,9 @@ export const multiTokenLaunchedEvent = getAbiItem({ abi: multiFactoryAbi, name: 
 export const marketOpenedEvent = getAbiItem({ abi: multiFactoryAbi, name: "MarketOpened" });
 export const swapEvent = getAbiItem({ abi: poolManagerAbi, name: "Swap" });
 /** Turn the raw logs of both factories into launch events (logs from other contracts are ignored). */
-export function parseLaunchLogs(logs) {
+export function parseLaunchLogs(logs, chainId = ROBINHOOD_CHAIN_ID) {
     const out = [];
-    const single = parseEventLogs({ abi: factoryAbi, eventName: "TokenLaunched", logs: logs.filter(fromFactory) });
+    const single = parseEventLogs({ abi: factoryAbi, eventName: "TokenLaunched", logs: logs.filter((l) => fromFactory(l, chainId)) });
     for (const l of single) {
         out.push({
             token: l.args.token,
@@ -23,7 +24,7 @@ export function parseLaunchLogs(logs) {
             transactionHash: l.transactionHash,
         });
     }
-    const multiLogs = logs.filter(fromMultiFactory);
+    const multiLogs = logs.filter((l) => fromMultiFactory(l, chainId));
     const opened = parseEventLogs({ abi: multiFactoryAbi, eventName: "MarketOpened", logs: multiLogs });
     const multi = parseEventLogs({ abi: multiFactoryAbi, eventName: "TokenLaunched", logs: multiLogs });
     for (const l of multi) {
@@ -44,33 +45,36 @@ export function parseLaunchLogs(logs) {
     }
     return out.sort((a, b) => (a.blockNumber === b.blockNumber ? 0 : a.blockNumber < b.blockNumber ? -1 : 1));
 }
-function fromFactory(l) {
-    return l.address.toLowerCase() === ADDRESSES.factory.toLowerCase();
+function fromFactory(l, chainId) {
+    return l.address.toLowerCase() === getAddresses(chainId).factory.toLowerCase();
 }
-function fromMultiFactory(l) {
-    return l.address.toLowerCase() === ADDRESSES.multiFactory.toLowerCase();
+function fromMultiFactory(l, chainId) {
+    return l.address.toLowerCase() === getAddresses(chainId).multiFactory.toLowerCase();
 }
 /**
  * Every launch in a block range, both factories. Public RPCs cap the range
  * of one eth_getLogs call (commonly 10k blocks); page if you need more.
  */
-export async function getLaunches(client, fromBlock, toBlock = "latest") {
+export async function getLaunches(client, fromBlock, toBlock = "latest", chainId = ROBINHOOD_CHAIN_ID) {
+    const A = getAddresses(chainId);
+    const start = deployBlockOf(chainId);
     const logs = await client.getLogs({
-        address: [ADDRESSES.factory, ADDRESSES.multiFactory],
+        address: [A.factory, A.multiFactory],
         events: [tokenLaunchedEvent, multiTokenLaunchedEvent, marketOpenedEvent],
-        fromBlock: fromBlock < FACTORY_DEPLOY_BLOCK ? FACTORY_DEPLOY_BLOCK : fromBlock,
+        fromBlock: fromBlock < start ? start : fromBlock,
         toBlock,
     });
-    return parseLaunchLogs(logs);
+    return parseLaunchLogs(logs, chainId);
 }
 /** Subscribe to new launches. Returns the unsubscribe function. */
-export function watchLaunches(client, onLaunch, pollingInterval = 2_000) {
+export function watchLaunches(client, onLaunch, pollingInterval = 2_000, chainId = ROBINHOOD_CHAIN_ID) {
+    const A = getAddresses(chainId);
     return client.watchEvent({
-        address: [ADDRESSES.factory, ADDRESSES.multiFactory],
+        address: [A.factory, A.multiFactory],
         events: [tokenLaunchedEvent, multiTokenLaunchedEvent, marketOpenedEvent],
         pollingInterval,
         onLogs: (logs) => {
-            for (const l of parseLaunchLogs(logs))
+            for (const l of parseLaunchLogs(logs, chainId))
                 onLaunch(l);
         },
     });
@@ -80,11 +84,12 @@ export function watchLaunches(client, onLaunch, pollingInterval = 2_000) {
  * deltas (positive = received from the pool, negative = paid into it), so a
  * positive token side is a buy.
  */
-export function parseTradeLogs(market, logs) {
+export function parseTradeLogs(market, logs, chainId = ROBINHOOD_CHAIN_ID) {
+    const poolManager = getAddresses(chainId).poolManager.toLowerCase();
     const swaps = parseEventLogs({
         abi: poolManagerAbi,
         eventName: "Swap",
-        logs: logs.filter((l) => l.address.toLowerCase() === ADDRESSES.poolManager.toLowerCase()),
+        logs: logs.filter((l) => l.address.toLowerCase() === poolManager),
     });
     const out = [];
     for (const s of swaps) {
@@ -107,26 +112,26 @@ export function parseTradeLogs(market, logs) {
     return out;
 }
 /** Trades of one market in a block range. */
-export async function getTrades(client, market, fromBlock, toBlock = "latest") {
+export async function getTrades(client, market, fromBlock, toBlock = "latest", chainId = ROBINHOOD_CHAIN_ID) {
     const logs = await client.getLogs({
-        address: ADDRESSES.poolManager,
+        address: getAddresses(chainId).poolManager,
         event: swapEvent,
         args: { id: market.poolId },
         fromBlock,
         toBlock,
     });
-    return parseTradeLogs(market, logs);
+    return parseTradeLogs(market, logs, chainId);
 }
 /** Subscribe to trades of one or more markets. Returns the unsubscribe function. */
-export function watchTrades(client, markets, onTrade, pollingInterval = 2_000) {
+export function watchTrades(client, markets, onTrade, pollingInterval = 2_000, chainId = ROBINHOOD_CHAIN_ID) {
     return client.watchEvent({
-        address: ADDRESSES.poolManager,
+        address: getAddresses(chainId).poolManager,
         event: swapEvent,
         args: { id: markets.map((m) => m.poolId) },
         pollingInterval,
         onLogs: (logs) => {
             for (const m of markets)
-                for (const t of parseTradeLogs(m, logs))
+                for (const t of parseTradeLogs(m, logs, chainId))
                     onTrade(t);
         },
     });

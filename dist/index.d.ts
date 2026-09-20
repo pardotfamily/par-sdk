@@ -14,11 +14,13 @@ export * from "./metadata.js";
 export * from "./indexer.js";
 export * from "./trade.js";
 export type ParOptions = {
-    /** Your own viem PublicClient for Robinhood Chain; a public-RPC client is created if omitted. */
+    /** The chain to work on: 4663 Robinhood Chain (default), 5042 Arc, and every other id in `ADDRESSES_BY_CHAIN`. */
+    chainId?: number;
+    /** Your own viem PublicClient for that chain; a public-RPC client is created if omitted. */
     client?: PublicClient;
     /** RPC URL, used only when `client` is not given. */
     rpcUrl?: string;
-    /** Indexer base URL; defaults to the public https://api.par.family. */
+    /** Indexer base URL; defaults to the chain's public indexer (https://api.par.family on Robinhood Chain). */
     indexerUrl?: string;
 };
 /** A launch together with the ETH routes of its markets, ready to quote and trade. */
@@ -26,6 +28,7 @@ export type TradableLaunch = ParLaunch & {
     routes: (EthRoute | null)[];
 };
 export type Par = {
+    chainId: number;
     client: PublicClient;
     indexer: ParIndexer;
     /** Is this a par token, and how is it set up? Null for anything else. */

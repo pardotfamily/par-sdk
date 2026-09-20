@@ -23,11 +23,11 @@ export declare function poolIdOf(key: PoolKey): Hex;
 /** Whether the launched token is currency0 of its pool (only when its address sorts below the quote's). */
 export declare function tokenIsCurrency0(token: Address, key: PoolKey): boolean;
 /** The pool's current sqrtPriceX96, straight from PoolManager storage. */
-export declare function readSqrtPriceX96(client: PublicClient, poolId: Hex): Promise<bigint>;
+export declare function readSqrtPriceX96(client: PublicClient, poolId: Hex, chainId?: number): Promise<bigint>;
 /**
  * Spot price as raw quote units per 1e18 (one whole) token. Divide by
  * 10**quoteDecimals for a human number.
  */
 export declare function priceX18FromSqrt(sqrtPriceX96: bigint, tokenIsCurrency0: boolean): bigint;
 /** Spot price of a market in raw quote units per whole token. */
-export declare function readSpotPriceX18(client: PublicClient, token: Address, key: PoolKey): Promise<bigint>;
+export declare function readSpotPriceX18(client: PublicClient, token: Address, key: PoolKey, chainId?: number): Promise<bigint>;

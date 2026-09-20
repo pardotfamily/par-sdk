@@ -57,15 +57,28 @@ export const routerAbi = parseAbi([
   "error RouteEndMismatch(address expected, address actual)",
 ]);
 
-/** PairPadMultiRouter: one trade split over the markets of a multi-market token. */
+/**
+ * PairPadMultiRouter: one trade split over the markets of a multi-market
+ * token. The `*WithEth` / `*ToEth` entry points pay and deliver native ETH
+ * and exist for chains whose reference asset is the gas token (Robinhood
+ * Chain); the `*Reference` ones are their mirror for chains where the
+ * reference is an ERC-20 (USDC on Arc), paid through an allowance, same Leg
+ * shape. `launchAndBuy*` need msg.value to carry the factory's launch fee.
+ */
 export const multiRouterAbi = parseAbi([
   "struct PoolKey { address currency0; address currency1; uint24 fee; int24 tickSpacing; address hooks; }",
   "struct Hop { PoolKey key; bool v3; }",
   "struct Leg { uint8 market; Hop[] hops; uint256 amountIn; }",
+  "struct Socials { string twitter; string telegram; string discord; string website; string farcaster; }",
+  "struct TokenParams { string name; string symbol; string logo; string description; Socials socials; address creatorFeeRecipient; uint16 creatorTaxBps; bytes32 expectedEconomics; bytes32 salt; }",
   "function buyWithEth(address token, Leg[] legs, uint256 minTokensOut, address recipient) payable returns (uint256 tokensOut)",
   "function sellToEth(address token, Leg[] legs, uint256 minEthOut, address recipient) returns (uint256 ethOut)",
+  "function buyWithReference(address token, Leg[] legs, uint256 amountIn, uint256 minTokensOut, address recipient) returns (uint256 tokensOut)",
+  "function sellToReference(address token, Leg[] legs, uint256 minOut, address recipient) returns (uint256 amountOut)",
   "function sellToQuotes(address token, Leg[] legs, uint256[] minOuts, address recipient)",
   "function buyWithQuote(address token, uint8 market, uint256 quoteIn, uint256 minTokensOut, address recipient) payable returns (uint256 tokensOut)",
+  "function launchAndBuyWithEth(TokenParams params, uint256 launchConfigId, address[] pairTokens, Leg[] legs, uint256 minTokensOut) payable returns (address token, uint256 tokensOut)",
+  "function launchAndBuyWithReference(TokenParams params, uint256 launchConfigId, address[] pairTokens, Leg[] legs, uint256 amountIn, uint256 minTokensOut) payable returns (address token, uint256 tokensOut)",
   "error SlippageExceeded(uint256 amountOut, uint256 minAmountOut)",
   "error RouteBroken(uint256 index)",
   "error RouteEndMismatch(address expected, address actual)",

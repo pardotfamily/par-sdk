@@ -1,7 +1,7 @@
 {
   "name": "par-sdk",
-  "version": "0.2.3",
-  "description": "TypeScript SDK for par, the token launchpad on Robinhood Chain: discover launches, read pools, quote and build trades, query the public indexer.",
+  "version": "0.3.0",
+  "description": "TypeScript SDK for par, the token launchpad on Robinhood Chain, Arc, Base and BNB Chain: discover launches, read pools, quote and build trades, query the public indexers.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,7 +23,7 @@
     "url": "https://github.com/pardotfamily/par-sdk.git"
   },
   "homepage": "https://par.family/docs",
-  "keywords": ["par", "launchpad", "robinhood-chain", "uniswap-v4", "viem"],
+  "keywords": ["par", "launchpad", "robinhood-chain", "arc", "base", "bnb-chain", "uniswap-v4", "viem"],
   "peerDependencies": {
     "viem": "^2.0.0"
   },

@@ -41,6 +41,6 @@ export type ParLaunch = {
  * Look a token up on both factories. Returns null if the address was not
  * launched through par. One round trip per factory plus one per quote asset.
  */
-export declare function getLaunch(client: PublicClient, token: Address): Promise<ParLaunch | null>;
+export declare function getLaunch(client: PublicClient, token: Address, chainId?: number): Promise<ParLaunch | null>;
 /** Whether an address is a par token (either factory). */
-export declare function isParToken(client: PublicClient, token: Address): Promise<boolean>;
+export declare function isParToken(client: PublicClient, token: Address, chainId?: number): Promise<boolean>;

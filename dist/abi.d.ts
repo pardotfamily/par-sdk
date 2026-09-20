@@ -832,7 +832,14 @@ export declare const routerAbi: readonly [{
         readonly name: "actual";
     }];
 }];
-/** PairPadMultiRouter: one trade split over the markets of a multi-market token. */
+/**
+ * PairPadMultiRouter: one trade split over the markets of a multi-market
+ * token. The `*WithEth` / `*ToEth` entry points pay and deliver native ETH
+ * and exist for chains whose reference asset is the gas token (Robinhood
+ * Chain); the `*Reference` ones are their mirror for chains where the
+ * reference is an ERC-20 (USDC on Arc), paid through an allowance, same Leg
+ * shape. `launchAndBuy*` need msg.value to carry the factory's launch fee.
+ */
 export declare const multiRouterAbi: readonly [{
     readonly name: "buyWithEth";
     readonly type: "function";
@@ -942,6 +949,117 @@ export declare const multiRouterAbi: readonly [{
         readonly name: "ethOut";
     }];
 }, {
+    readonly name: "buyWithReference";
+    readonly type: "function";
+    readonly stateMutability: "nonpayable";
+    readonly inputs: readonly [{
+        readonly type: "address";
+        readonly name: "token";
+    }, {
+        readonly type: "tuple[]";
+        readonly components: readonly [{
+            readonly type: "uint8";
+            readonly name: "market";
+        }, {
+            readonly name: "hops";
+            readonly type: "tuple[]";
+            readonly components: readonly [{
+                readonly name: "key";
+                readonly type: "tuple";
+                readonly components: readonly [{
+                    readonly type: "address";
+                    readonly name: "currency0";
+                }, {
+                    readonly type: "address";
+                    readonly name: "currency1";
+                }, {
+                    readonly type: "uint24";
+                    readonly name: "fee";
+                }, {
+                    readonly type: "int24";
+                    readonly name: "tickSpacing";
+                }, {
+                    readonly type: "address";
+                    readonly name: "hooks";
+                }];
+            }, {
+                readonly type: "bool";
+                readonly name: "v3";
+            }];
+        }, {
+            readonly type: "uint256";
+            readonly name: "amountIn";
+        }];
+        readonly name: "legs";
+    }, {
+        readonly type: "uint256";
+        readonly name: "amountIn";
+    }, {
+        readonly type: "uint256";
+        readonly name: "minTokensOut";
+    }, {
+        readonly type: "address";
+        readonly name: "recipient";
+    }];
+    readonly outputs: readonly [{
+        readonly type: "uint256";
+        readonly name: "tokensOut";
+    }];
+}, {
+    readonly name: "sellToReference";
+    readonly type: "function";
+    readonly stateMutability: "nonpayable";
+    readonly inputs: readonly [{
+        readonly type: "address";
+        readonly name: "token";
+    }, {
+        readonly type: "tuple[]";
+        readonly components: readonly [{
+            readonly type: "uint8";
+            readonly name: "market";
+        }, {
+            readonly name: "hops";
+            readonly type: "tuple[]";
+            readonly components: readonly [{
+                readonly name: "key";
+                readonly type: "tuple";
+                readonly components: readonly [{
+                    readonly type: "address";
+                    readonly name: "currency0";
+                }, {
+                    readonly type: "address";
+                    readonly name: "currency1";
+                }, {
+                    readonly type: "uint24";
+                    readonly name: "fee";
+                }, {
+                    readonly type: "int24";
+                    readonly name: "tickSpacing";
+                }, {
+                    readonly type: "address";
+                    readonly name: "hooks";
+                }];
+            }, {
+                readonly type: "bool";
+                readonly name: "v3";
+            }];
+        }, {
+            readonly type: "uint256";
+            readonly name: "amountIn";
+        }];
+        readonly name: "legs";
+    }, {
+        readonly type: "uint256";
+        readonly name: "minOut";
+    }, {
+        readonly type: "address";
+        readonly name: "recipient";
+    }];
+    readonly outputs: readonly [{
+        readonly type: "uint256";
+        readonly name: "amountOut";
+    }];
+}, {
     readonly name: "sellToQuotes";
     readonly type: "function";
     readonly stateMutability: "nonpayable";
@@ -1013,6 +1131,217 @@ export declare const multiRouterAbi: readonly [{
         readonly name: "recipient";
     }];
     readonly outputs: readonly [{
+        readonly type: "uint256";
+        readonly name: "tokensOut";
+    }];
+}, {
+    readonly name: "launchAndBuyWithEth";
+    readonly type: "function";
+    readonly stateMutability: "payable";
+    readonly inputs: readonly [{
+        readonly type: "tuple";
+        readonly components: readonly [{
+            readonly type: "string";
+            readonly name: "name";
+        }, {
+            readonly type: "string";
+            readonly name: "symbol";
+        }, {
+            readonly type: "string";
+            readonly name: "logo";
+        }, {
+            readonly type: "string";
+            readonly name: "description";
+        }, {
+            readonly name: "socials";
+            readonly type: "tuple";
+            readonly components: readonly [{
+                readonly type: "string";
+                readonly name: "twitter";
+            }, {
+                readonly type: "string";
+                readonly name: "telegram";
+            }, {
+                readonly type: "string";
+                readonly name: "discord";
+            }, {
+                readonly type: "string";
+                readonly name: "website";
+            }, {
+                readonly type: "string";
+                readonly name: "farcaster";
+            }];
+        }, {
+            readonly type: "address";
+            readonly name: "creatorFeeRecipient";
+        }, {
+            readonly type: "uint16";
+            readonly name: "creatorTaxBps";
+        }, {
+            readonly type: "bytes32";
+            readonly name: "expectedEconomics";
+        }, {
+            readonly type: "bytes32";
+            readonly name: "salt";
+        }];
+        readonly name: "params";
+    }, {
+        readonly type: "uint256";
+        readonly name: "launchConfigId";
+    }, {
+        readonly type: "address[]";
+        readonly name: "pairTokens";
+    }, {
+        readonly type: "tuple[]";
+        readonly components: readonly [{
+            readonly type: "uint8";
+            readonly name: "market";
+        }, {
+            readonly name: "hops";
+            readonly type: "tuple[]";
+            readonly components: readonly [{
+                readonly name: "key";
+                readonly type: "tuple";
+                readonly components: readonly [{
+                    readonly type: "address";
+                    readonly name: "currency0";
+                }, {
+                    readonly type: "address";
+                    readonly name: "currency1";
+                }, {
+                    readonly type: "uint24";
+                    readonly name: "fee";
+                }, {
+                    readonly type: "int24";
+                    readonly name: "tickSpacing";
+                }, {
+                    readonly type: "address";
+                    readonly name: "hooks";
+                }];
+            }, {
+                readonly type: "bool";
+                readonly name: "v3";
+            }];
+        }, {
+            readonly type: "uint256";
+            readonly name: "amountIn";
+        }];
+        readonly name: "legs";
+    }, {
+        readonly type: "uint256";
+        readonly name: "minTokensOut";
+    }];
+    readonly outputs: readonly [{
+        readonly type: "address";
+        readonly name: "token";
+    }, {
+        readonly type: "uint256";
+        readonly name: "tokensOut";
+    }];
+}, {
+    readonly name: "launchAndBuyWithReference";
+    readonly type: "function";
+    readonly stateMutability: "payable";
+    readonly inputs: readonly [{
+        readonly type: "tuple";
+        readonly components: readonly [{
+            readonly type: "string";
+            readonly name: "name";
+        }, {
+            readonly type: "string";
+            readonly name: "symbol";
+        }, {
+            readonly type: "string";
+            readonly name: "logo";
+        }, {
+            readonly type: "string";
+            readonly name: "description";
+        }, {
+            readonly name: "socials";
+            readonly type: "tuple";
+            readonly components: readonly [{
+                readonly type: "string";
+                readonly name: "twitter";
+            }, {
+                readonly type: "string";
+                readonly name: "telegram";
+            }, {
+                readonly type: "string";
+                readonly name: "discord";
+            }, {
+                readonly type: "string";
+                readonly name: "website";
+            }, {
+                readonly type: "string";
+                readonly name: "farcaster";
+            }];
+        }, {
+            readonly type: "address";
+            readonly name: "creatorFeeRecipient";
+        }, {
+            readonly type: "uint16";
+            readonly name: "creatorTaxBps";
+        }, {
+            readonly type: "bytes32";
+            readonly name: "expectedEconomics";
+        }, {
+            readonly type: "bytes32";
+            readonly name: "salt";
+        }];
+        readonly name: "params";
+    }, {
+        readonly type: "uint256";
+        readonly name: "launchConfigId";
+    }, {
+        readonly type: "address[]";
+        readonly name: "pairTokens";
+    }, {
+        readonly type: "tuple[]";
+        readonly components: readonly [{
+            readonly type: "uint8";
+            readonly name: "market";
+        }, {
+            readonly name: "hops";
+            readonly type: "tuple[]";
+            readonly components: readonly [{
+                readonly name: "key";
+                readonly type: "tuple";
+                readonly components: readonly [{
+                    readonly type: "address";
+                    readonly name: "currency0";
+                }, {
+                    readonly type: "address";
+                    readonly name: "currency1";
+                }, {
+                    readonly type: "uint24";
+                    readonly name: "fee";
+                }, {
+                    readonly type: "int24";
+                    readonly name: "tickSpacing";
+                }, {
+                    readonly type: "address";
+                    readonly name: "hooks";
+                }];
+            }, {
+                readonly type: "bool";
+                readonly name: "v3";
+            }];
+        }, {
+            readonly type: "uint256";
+            readonly name: "amountIn";
+        }];
+        readonly name: "legs";
+    }, {
+        readonly type: "uint256";
+        readonly name: "amountIn";
+    }, {
+        readonly type: "uint256";
+        readonly name: "minTokensOut";
+    }];
+    readonly outputs: readonly [{
+        readonly type: "address";
+        readonly name: "token";
+    }, {
         readonly type: "uint256";
         readonly name: "tokensOut";
     }];

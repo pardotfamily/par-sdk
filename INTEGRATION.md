@@ -483,3 +483,58 @@ Mainnet source verification: Arc's public explorer with a verification API was n
 - Fees, fee modes, locker, pool fee, launch flow, events (`TokenLaunched`, `Swap`, `FeesCollected`, `WallMoved`, `Dispersed`): identical.
 - Hosts follow one scheme per chain: `<chain>.par.family` for the app, `api-<chain>.par.family` for the indexer, `-testnet` suffix for testnets. Both pairs are live.
 - Testnet only: Uniswap is a fork (UnitFlow) with a v1-style V3 SwapRouter, so router hops through V3 (non-USDC quotes) do not work there; USDC quoted markets work fully. Mainnet uses canonical Uniswap and has no such limit.
+
+## A12. Base and BNB Chain
+
+Since 2026-09-20 par is one app for four chains. `https://par.family` lists every chain's launches (each row carries `chainId`), token pages are `https://par.family/token/<chain>/<address>` with chain slugs `rh`, `arc`, `base`, `bnb` (the chain-less `/token/<address>` still resolves). `arc.par.family` keeps working as an alias for Arc.
+
+```
+Base       chain id 8453   Indexer https://api-base.par.family   (also https://par.family/idx/8453)   RPC https://mainnet.base.org        Explorer https://basescan.org
+BNB Chain  chain id 56     Indexer https://api-bnb.par.family    (also https://par.family/idx/56)     RPC https://bsc-rpc.publicnode.com  Explorer https://bscscan.com
+```
+
+Both chains work like Robinhood Chain: the gas token is the reference (ETH on Base, BNB on BNB Chain), `nativeIsReference()` is true, the payable entry points (`buyWithEth`, `sellToEth`, `launchAndBuyWithEth`) apply, and both the single-market and the multi-market factories accept launches. Same events, fees, fee modes, lockers as A1-A10. ABIs: the Robinhood Chain ABIs in `abi/` plus `setV3FeeTiers`/`v3FeeTiers` on the BNB pricer.
+
+Base (deployed 2026-09-18 at block 51489805; the same deployer and nonces as Arc, so the same par addresses as Arc):
+```
+PairPadLaunchFactory          0x02E9EE8527f4AFF58f7a1E08B1b898637ce718e9
+PairPadRouter                 0xE721a861b32dEc68230101EA576304a63ebeEacd
+PairPadLaunchLocker           0xE5B0B35F4927004fE8c0E437030723Eb80F6C32E
+PairPadMultiLaunchFactory     0x920Ca489f8c9573645b8aB00dad60fc81c9487fd
+PairPadMultiRouter            0x7cda46222a6B202f6B18A51b9a558Bc38a655083
+PairPadMultiLocker            0x344A4A773Df4FFa89AE6Dc4f1418123990a34647
+PairPadFeeEscrow              0x96AB924F958da3a8d83fCdF5Ce692653fCEea9fD
+PairPadQuotePricer            0xcebC312381D1F816da478Acc8A37711808909d90
+PairPadFeeSplitter            0x031f3D93A94c5F34EE3e608566245AAC271523A9
+PairPadHolderVault            0x64D085E5269fdAFfc28363f21b208f8A2EfCcD0A
+PairPadBurnVault              0x4067820296a0C717c3e31B05E98505b3215c5544
+PairPadFloorVault             0x5567633b002f935181f0fEAa8953Bd0ad5610b0D
+PairPadDisperseV2             0x372A36543d29F00053161BCAD1cCCCC595a7cA88
+Uniswap v4 PoolManager        0x498581fF718922c3f8e6A244956aF099B2652b2b
+WETH                          0x4200000000000000000000000000000000000006
+USDC (pricer's second anchor) 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+```
+
+BNB Chain (deployed 2026-09-20 at block 122881639). The V3 side is PancakeSwap's, where BNB Chain's liquidity is: the pricer scans Pancake V3 pools (factory `0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865`, fee tiers 100/500/2500/10000) and the routers' external hops go through Pancake's SmartRouter (`0x13f4EA83D0bd40E75C8222255bc855a974568Dd4`, `exactInputSingle` as on SwapRouter02). The par pools themselves are Uniswap v4 pools. An earlier BNB stack at the Base addresses has launches disabled; ignore it.
+```
+PairPadLaunchFactory          0x456645ad38d099358Cb95ff743736663CDB31a25
+PairPadRouter                 0x9DF1B1687f95Ce8a42fC8c861F767B6D52C346ab
+PairPadLaunchLocker           0xBE14efB8d23346730025902813AF1bE4a4955eb3
+PairPadMultiLaunchFactory     0x6715d9C03590F0e7b11A7Cd5bab2eAD4F77e666A
+PairPadMultiRouter            0x7b62174524f0c2d4c475ac05ee9a6F893D625a10
+PairPadMultiLocker            0x03136E9FE0be1943191Cf022EFa40B436CDdCBdE
+PairPadFeeEscrow              0x389216d9F1A3BC72415Ddf16cA50Ca5Bf8B5b065
+PairPadQuotePricer            0x335b39437637A09d791848eB675E5F8D290bba71
+PairPadFeeSplitter            0xD713367eD15bC42BF23Ef2D449629053A16a30D9
+PairPadHolderVault            0xb9E88952596F56f090A36D2FE2B37F50A29dd459
+PairPadBurnVault              0x5EAE87d4AaF8196079B009234938C0F5Baa79578
+PairPadFloorVault             0x3b90bef8FA9694B46a01d5E4073937fB913F1799
+PairPadDisperseV2             0x589576e4f610B85DBd7a06015acEacF732DD9828
+Uniswap v4 PoolManager        0x28e2Ea090877bF75740558f6BFB36A5ffeE9e9dF
+WBNB                          0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c
+USDT (pricer's second anchor) 0x55d398326f99059fF775485246999027B3197955
+```
+
+Opening market cap on both is the same 1.36 ETH equivalent as on Robinhood Chain (1.36 ETH on Base, 4.7 BNB on BNB Chain); launch fee 0.0005 ETH on Base, 0.002 BNB on BNB Chain; pricer depth floor 1 ETH / 2.5 BNB.
+
+SDK: `createPar({ chainId: 8453 })` or `{ chainId: 56 }`; `ADDRESSES_BASE`, `ADDRESSES_BNB`, `UNISWAP_BY_CHAIN`, `DEPLOY_BLOCK_BY_CHAIN` and `HOSTS_BY_CHAIN` carry the figures above. Source verification: Sourcify, with Basescan/BscScan to follow.

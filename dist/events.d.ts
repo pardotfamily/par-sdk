@@ -131,14 +131,14 @@ export declare const swapEvent: {
     }];
 };
 /** Turn the raw logs of both factories into launch events (logs from other contracts are ignored). */
-export declare function parseLaunchLogs(logs: Log[]): LaunchEvent[];
+export declare function parseLaunchLogs(logs: Log[], chainId?: number): LaunchEvent[];
 /**
  * Every launch in a block range, both factories. Public RPCs cap the range
  * of one eth_getLogs call (commonly 10k blocks); page if you need more.
  */
-export declare function getLaunches(client: PublicClient, fromBlock: bigint, toBlock?: bigint | "latest"): Promise<LaunchEvent[]>;
+export declare function getLaunches(client: PublicClient, fromBlock: bigint, toBlock?: bigint | "latest", chainId?: number): Promise<LaunchEvent[]>;
 /** Subscribe to new launches. Returns the unsubscribe function. */
-export declare function watchLaunches(client: PublicClient, onLaunch: (launch: LaunchEvent) => void, pollingInterval?: number): () => void;
+export declare function watchLaunches(client: PublicClient, onLaunch: (launch: LaunchEvent) => void, pollingInterval?: number, chainId?: number): () => void;
 /** One trade in a par pool, decoded from the PoolManager's Swap event. */
 export type TradeEvent = {
     poolId: Hex;
@@ -160,8 +160,8 @@ export type TradeEvent = {
  * deltas (positive = received from the pool, negative = paid into it), so a
  * positive token side is a buy.
  */
-export declare function parseTradeLogs(market: Pick<ParMarket, "poolId" | "tokenIsCurrency0">, logs: Log[]): TradeEvent[];
+export declare function parseTradeLogs(market: Pick<ParMarket, "poolId" | "tokenIsCurrency0">, logs: Log[], chainId?: number): TradeEvent[];
 /** Trades of one market in a block range. */
-export declare function getTrades(client: PublicClient, market: Pick<ParMarket, "poolId" | "tokenIsCurrency0">, fromBlock: bigint, toBlock?: bigint | "latest"): Promise<TradeEvent[]>;
+export declare function getTrades(client: PublicClient, market: Pick<ParMarket, "poolId" | "tokenIsCurrency0">, fromBlock: bigint, toBlock?: bigint | "latest", chainId?: number): Promise<TradeEvent[]>;
 /** Subscribe to trades of one or more markets. Returns the unsubscribe function. */
-export declare function watchTrades(client: PublicClient, markets: Pick<ParMarket, "poolId" | "tokenIsCurrency0">[], onTrade: (trade: TradeEvent) => void, pollingInterval?: number): () => void;
+export declare function watchTrades(client: PublicClient, markets: Pick<ParMarket, "poolId" | "tokenIsCurrency0">[], onTrade: (trade: TradeEvent) => void, pollingInterval?: number, chainId?: number): () => void;

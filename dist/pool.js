@@ -1,5 +1,6 @@
 import { encodeAbiParameters, keccak256, zeroAddress } from "viem";
-import { ADDRESSES } from "./addresses.js";
+import { getAddresses } from "./addresses.js";
+import { ROBINHOOD_CHAIN_ID } from "./chain.js";
 import { poolManagerAbi } from "./abi.js";
 const WAD = 10n ** 18n;
 const Q192 = 2n ** 192n;
@@ -25,9 +26,9 @@ function slot0Slot(poolId) {
     return keccak256(encodeAbiParameters([{ type: "bytes32" }, { type: "uint256" }], [poolId, 6n]));
 }
 /** The pool's current sqrtPriceX96, straight from PoolManager storage. */
-export async function readSqrtPriceX96(client, poolId) {
+export async function readSqrtPriceX96(client, poolId, chainId = ROBINHOOD_CHAIN_ID) {
     const word = await client.readContract({
-        address: ADDRESSES.poolManager,
+        address: getAddresses(chainId).poolManager,
         abi: poolManagerAbi,
         functionName: "extsload",
         args: [slot0Slot(poolId)],
@@ -44,7 +45,7 @@ export function priceX18FromSqrt(sqrtPriceX96, tokenIsCurrency0) {
     return tokenIsCurrency0 ? (sqrtPriceX96 * sqrtPriceX96 * WAD) / Q192 : (Q192 * WAD) / (sqrtPriceX96 * sqrtPriceX96);
 }
 /** Spot price of a market in raw quote units per whole token. */
-export async function readSpotPriceX18(client, token, key) {
-    const sqrt = await readSqrtPriceX96(client, poolIdOf(key));
+export async function readSpotPriceX18(client, token, key, chainId = ROBINHOOD_CHAIN_ID) {
+    const sqrt = await readSqrtPriceX96(client, poolIdOf(key), chainId);
     return priceX18FromSqrt(sqrt, tokenIsCurrency0(token, key));
 }

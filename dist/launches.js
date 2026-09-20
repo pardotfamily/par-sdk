@@ -1,5 +1,6 @@
 import { zeroAddress } from "viem";
-import { ADDRESSES } from "./addresses.js";
+import { getAddresses } from "./addresses.js";
+import { ROBINHOOD_CHAIN_ID } from "./chain.js";
 import { erc20Abi, factoryAbi, multiFactoryAbi } from "./abi.js";
 import { poolIdOf, poolKeyFor, tokenIsCurrency0 } from "./pool.js";
 async function quoteMeta(client, pairToken) {
@@ -15,7 +16,8 @@ async function quoteMeta(client, pairToken) {
  * Look a token up on both factories. Returns null if the address was not
  * launched through par. One round trip per factory plus one per quote asset.
  */
-export async function getLaunch(client, token) {
+export async function getLaunch(client, token, chainId = ROBINHOOD_CHAIN_ID) {
+    const ADDRESSES = getAddresses(chainId);
     const single = await client.readContract({
         address: ADDRESSES.factory,
         abi: factoryAbi,
@@ -106,6 +108,6 @@ export async function getLaunch(client, token) {
     };
 }
 /** Whether an address is a par token (either factory). */
-export async function isParToken(client, token) {
-    return (await getLaunch(client, token)) !== null;
+export async function isParToken(client, token, chainId = ROBINHOOD_CHAIN_ID) {
+    return (await getLaunch(client, token, chainId)) !== null;
 }
